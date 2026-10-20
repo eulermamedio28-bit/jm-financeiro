@@ -35,6 +35,10 @@ jobs:
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Aceitar licencas Android
+        run: |
+          yes | sdkmanager --licenses || true
+
       - name: Gerar APK
         working-directory: android
         run: bash gradlew assembleDebug
