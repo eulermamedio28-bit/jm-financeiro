@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Configurar Node
         uses: actions/setup-node@v4
@@ -34,20 +34,9 @@ jobs:
 
       - name: Verificar Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          echo "Android SDK: $ANDROID_HOME"
           test -d "$ANDROID_HOME"
           java -version
-
-      - name: Aceitar licencas Android
-        shell: bash
-        run: |
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [ -x "$SDKMANAGER" ]; then
-            yes | "$SDKMANAGER" --licenses || true
-          else
-            echo "sdkmanager nao encontrado; Gradle tentara usar o SDK existente"
-          fi
 
       - name: Gerar APK
         working-directory: android
