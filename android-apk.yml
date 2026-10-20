@@ -1,0 +1,46 @@
+
+name: Gerar APK JM Financeiro
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Preparar aplicativo
+        run: |
+          npm run build
+          npx cap add android
+          npx cap sync android
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Gerar APK
+        working-directory: android
+        run: bash gradlew assembleDebug
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JM-Financeiro-Android
+          path: android/app/build/outputs/apk/debug/app-debug.apk
