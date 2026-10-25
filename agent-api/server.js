@@ -3,6 +3,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { createPilotAuth } from './pilot-auth.js';
+import { readFileSync } from 'node:fs';
 
 const db = new DatabaseSync(process.env.JM_DB_PATH || './jm-dev.sqlite');
 db.exec('PRAGMA journal_mode = WAL');
@@ -72,7 +73,47 @@ const handlers = {
    db.prepare('INSERT INTO entries VALUES (@id,@kind,@account_id,@category_id,@description,@amount_cents,@created_at)').run(r);return r;
  }
 };
+const pilotHtml=readFileSync(new URL('../demo-euler/login.html',import.meta.url),'utf8');
+const cookieSession=req=>{
+ const match=(req.headers.cookie||'').match(/(?:^|;\\s*)jm_pilot=([a-f0-9]{64})(?:;|$)/);
+ return match?.[1]||'';
+};
+const pilotOriginOk=req=>{
+ const origin=req.headers.origin;
+ const host=req.headers.host;
+ return !req.headers['sec-fetch-site']?.includes('cross-site') && (!origin || origin==='http://'+host);
+};
+const pilotCookie=(value,maxAge=1800)=>'jm_pilot='+value+'; HttpOnly; SameSite=Strict; Path=/pilot; Max-Age='+maxAge;
+const pilotJson=(res,status,data,cookie)=>{
+ res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...(cookie?{'set-cookie':cookie}:{})});
+ res.end(JSON.stringify(data));
+};
 const server=http.createServer(async(req,res)=>{
+  const route=req.method+' '+new URL(req.url,'http://localhost').pathname;
+  if(route==='GET /pilot'){
+    res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'x-content-type-options':'nosniff'});
+    return res.end(pilotHtml);
+  }
+  if(route.startsWith('GET /pilot/') || route.startsWith('POST /pilot/')){
+    if(!pilotOriginOk(req)) return pilotJson(res,403,{error:'Origem não autorizada'});
+    if(route==='POST /pilot/login'){
+      if(!req.headers['content-type']?.startsWith('application/json')) return pilotJson(res,415,{error:'JSON obrigatório'});
+      let raw='';
+      try{
+        for await(const chunk of req){raw+=chunk;if(raw.length>2048)throw Error('Corpo grande');}
+        const body=JSON.parse(raw);
+        const session=auth.login(body?.username,body?.password);
+        return session?pilotJson(res,200,{username:'euler',expiresInSeconds:session.expiresInSeconds},pilotCookie(session.token)):pilotJson(res,401,{error:'Credenciais inválidas'});
+      }catch{return pilotJson(res,400,{error:'Requisição inválida'});}
+    }
+    const sessionToken=cookieSession(req);
+    const identity=auth.authenticate(sessionToken);
+    if(!identity) return pilotJson(res,401,{error:'Sessão expirada ou inválida'});
+    if(route==='GET /pilot/me') return pilotJson(res,200,{username:identity.username});
+    if(route==='GET /pilot/summary') return pilotJson(res,200,handlers['GET /summary']());
+    if(route==='POST /pilot/logout'){auth.logout(sessionToken);return pilotJson(res,200,{ok:true},pilotCookie('',0));}
+    return pilotJson(res,404,{error:'Rota inexistente'});
+  }
   if(hasForbiddenOrigin(req)) return json(res,403,{error:'Origem não autorizada'});
   if(!safeEqual(req.headers.authorization||'', 'Bearer '+token) || !validSession(req)) return json(res,401,{error:'Não autorizado'});
   const route=req.method+' '+new URL(req.url,'http://localhost').pathname;
