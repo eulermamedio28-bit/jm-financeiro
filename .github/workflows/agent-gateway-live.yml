@@ -1,0 +1,20 @@
+name: JM Gateway - teste HTTPS implantado
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev/agente-financeiro-1
+    paths:
+      - 'agent-gateway/live.test.js'
+      - '.github/workflows/agent-gateway-live.yml'
+jobs:
+  external-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar HTTPS e autenticação sem usar credenciais
+        run: node --test live.test.js
+        working-directory: agent-gateway
