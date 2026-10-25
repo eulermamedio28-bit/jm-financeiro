@@ -11,6 +11,7 @@ cd agent-api
 npm install
 export JM_API_TOKEN="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
 export JM_PILOT_SESSION="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
+export JM_PILOT_PASSWORD_HASH="$(node --input-type=module -e 'import {hashPassword} from "./pilot-auth.js"; console.log(hashPassword("senha-ficticia-de-teste-123"))')"
 npm start
 ```
 
@@ -35,3 +36,9 @@ O arquivo `pilot-auth.js` prepara autenticação de **um único usuário de test
 Para executar apenas os testes locais do módulo: `node --test pilot-auth.test.js`. Não utilize senhas reais de Euler nem inclua hashes ou segredos no GitHub.
 
 **Limitação fundamental:** este módulo ainda não foi conectado às rotas HTTP do servidor, não oferece login no celular, HTTPS, recuperação de conta ou proteção de produção. As rotas da API continuam com as credenciais experimentais anteriores. Nenhum acesso real foi liberado.
+
+## Autenticação individual experimental integrada
+
+Todas as rotas financeiras agora exigem, além das duas credenciais locais de desenvolvimento, `X-JM-User-Session` válido. `POST /auth/login` recebe `{ "username": "euler", "password": "..." }` e retorna token de sessão temporária. `GET /auth/me` confirma a identidade; `POST /auth/logout` revoga o token. Login e logout não exigem chave de idempotência. Auditoria registra `euler` em vez de autor genérico. Sem sessão, operações de leitura e escrita são rejeitadas.
+
+A senha acima é **fictícia, apenas para desenvolvimento**. Não reutilize senhas pessoais. Sessões são armazenadas somente na memória e se perdem ao reiniciar. Esta integração continua local, sem HTTPS, sem login visual no celular e **não é adequada à produção**. O cabeçalho de sessão jamais deve ser embutido em código público.
