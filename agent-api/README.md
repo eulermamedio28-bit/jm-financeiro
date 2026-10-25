@@ -10,10 +10,11 @@ Requisitos: Node.js 22+ e npm.
 cd agent-api
 npm install
 export JM_API_TOKEN="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
+export JM_PILOT_SESSION="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
 npm start
 ```
 
-A API escuta somente em `127.0.0.1:8787`. Use cabeçalho `Authorization: Bearer <JM_API_TOKEN>`. Para toda requisição POST, envie `Idempotency-Key` com identificador único (mínimo 12 caracteres). O mesmo identificador retorna a mesma resposta sem duplicar lançamentos.
+A API escuta somente em `127.0.0.1:8787`. Use cabeçalhos `Authorization: Bearer <JM_API_TOKEN>` e `X-JM-Pilot-Session: <JM_PILOT_SESSION>`. Esta segunda credencial é uma barreira adicional apenas para testes locais: **não é login individual nem autenticação segura de usuário**. Nunca a inclua no código do aplicativo ou em repositório público. Para toda requisição POST, envie `Idempotency-Key` com identificador único (mínimo 12 caracteres). O mesmo identificador retorna a mesma resposta sem duplicar lançamentos.
 
 Rotas: `GET /health`, `GET /accounts`, `POST /accounts`, `GET /categories`, `POST /categories`, `GET /entries`, `POST /entries`, `GET /transfers`, `POST /transfers`, `GET /account-balances`, `GET /summary`, `GET /audit`.
 
