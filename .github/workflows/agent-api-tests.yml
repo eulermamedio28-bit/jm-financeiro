@@ -4,6 +4,7 @@ on:
     branches: [dev/agente-financeiro-1]
     paths:
       - 'agent-api/**'
+      - 'demo-euler/**'
       - '.github/workflows/agent-api-tests.yml'
   workflow_dispatch:
 permissions:
@@ -21,5 +22,8 @@ jobs:
           node-version: '22'
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
-      - name: Testes automatizados (somente dados fictícios)
+      - name: Testes automatizados da API (somente dados fictícios)
         run: npm test
+      - name: Verificar demonstração offline
+        working-directory: demo-euler
+        run: node --test demo.test.js
