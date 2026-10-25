@@ -17,3 +17,19 @@ test('script embutido tem sintaxe válida',async()=>{
  assert.ok(code);
  assert.doesNotThrow(()=>new Script(code));
 });
+
+const login=readFileSync(join(import.meta.dirname,'login.html'),'utf8');
+test('prévia de login não coleta senhas nem faz requisições',()=>{
+ assert.match(login,/Protótipo de interface/);
+ assert.match(login,/não está conectada à API/);
+ assert.match(login,/type="password"[^>]*disabled/);
+ assert.match(login,/Entrar \(aguardando integração\)/);
+ assert.doesNotMatch(login,/fetch\(|XMLHttpRequest|localStorage|sessionStorage/);
+ assert.match(login,/name="viewport"/);
+});
+test('script da prévia de login tem sintaxe válida',async()=>{
+ const {Script}=await import('node:vm');
+ const code=login.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+ assert.ok(code);
+ assert.doesNotThrow(()=>new Script(code));
+});
