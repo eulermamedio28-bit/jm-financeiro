@@ -23,3 +23,7 @@ Transferências internas movimentam valores entre contas, mas **não** entram co
 Exemplo de lançamento fictício: `POST /entries` com `{"kind":"expense","account_id":"UUID","category_id":"UUID","description":"Despesa teste","amount_cents":2500}`.
 
 **Limitações importantes:** token único de desenvolvimento; sem HTTPS; sem contas de usuários, confirmação, backup remoto, controle de acesso individual ou sincronização PWA. Não expor à internet. Há testes automatizados configurados, mas sua aprovação na execução contínua ainda precisa ser verificada. Antes de conectar ao aplicativo ou MCP, faltam autenticação individual, HTTPS, backups, regras de autorização e validação de segurança.
+
+## Origens de navegador
+
+Por padrão, requisições com cabeçalho `Origin` são rejeitadas. Em um ambiente local de testes, `JM_ALLOWED_ORIGIN` pode definir uma única origem explícita. Isso **não** constitui autenticação e não habilita acesso remoto: a API continua restrita a `127.0.0.1`. O cabeçalho `Origin` pode ser omitido por clientes não navegador; por isso, não substitui controles de acesso.
