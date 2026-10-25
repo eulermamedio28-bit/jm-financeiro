@@ -67,6 +67,22 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const summary=await request('/summary');
   assert.equal(summary.status,200);
   assert.deepEqual(summary.data,{income_cents:0,expense_cents:2500,opening_cents:10000,balance_cents:7500});
+  const second=await request('/accounts','POST',{name:'Banco',opening_cents:0},'test-account-0002');
+  assert.equal(second.status,200);
+  const transferBody={from_account_id:account.data.id,to_account_id:second.data.id,amount_cents:3000,description:'Transferência fictícia'};
+  const transfer=await request('/transfers','POST',transferBody,'test-transfer-0001');
+  assert.equal(transfer.status,200);
+  const duplicateTransfer=await request('/transfers','POST',transferBody,'test-transfer-0001');
+  assert.deepEqual(duplicateTransfer.data,transfer.data);
+  assert.equal((await request('/transfers')).data.length,1);
+  const balances=(await request('/account-balances')).data;
+  assert.equal(balances.find(x=>x.id===account.data.id).balance_cents,4500);
+  assert.equal(balances.find(x=>x.id===second.data.id).balance_cents,3000);
+  const afterTransfer=(await request('/summary')).data;
+  assert.equal(afterTransfer.balance_cents,7500,'Transferência não muda saldo consolidado');
+  assert.equal(afterTransfer.income_cents,0,'Transferência não é receita');
+  assert.equal(afterTransfer.expense_cents,2500,'Transferência não é despesa');
+  assert.equal((await request('/audit')).data.length,5);
  } finally {
   if(child.exitCode===null && child.signalCode===null) {
    child.kill();
