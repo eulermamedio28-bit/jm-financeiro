@@ -41,6 +41,8 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal(missingSession.status,401);
   const wrongSession=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token,'x-jm-pilot-session':'invalid'}});
   assert.equal(wrongSession.status,401);
+  const untrustedOrigin=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession,origin:'https://exemplo-invalido.test'}});
+  assert.equal(untrustedOrigin.status,403);
   const wrongAuth=await fetch(base+'/entries',{headers:{authorization:'Bearer invalid-token'}});
   assert.equal(wrongAuth.status,401);
   assert.equal((await request('/accounts')).data.length,0);
