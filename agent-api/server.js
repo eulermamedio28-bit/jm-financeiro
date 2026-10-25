@@ -1,10 +1,10 @@
 // Ambiente de desenvolvimento isolado. Nunca exponha este servidor sem HTTPS e controle de acesso.
 import http from 'node:http';
 import crypto from 'node:crypto';
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 
-const db = new Database(process.env.JM_DB_PATH || './jm-dev.sqlite');
-db.pragma('journal_mode = WAL');
+const db = new DatabaseSync(process.env.JM_DB_PATH || './jm-dev.sqlite');
+db.exec('PRAGMA journal_mode = WAL');
 db.exec(`
 CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, opening_cents INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS categories(id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE);
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS entries(id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK
 CREATE TABLE IF NOT EXISTS request_log(key TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, response_json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY, action TEXT NOT NULL, record_id TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL);
 `);
-db.pragma('foreign_keys = ON');
+db.exec('PRAGMA foreign_keys = ON');
 const token = process.env.JM_API_TOKEN;
 if (!token || token.length < 32) throw new Error('Configure JM_API_TOKEN com pelo menos 32 caracteres aleatórios');
 const actor = 'ambiente-dev';
