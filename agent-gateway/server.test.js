@@ -64,6 +64,10 @@ test('MCP oferece somente consulta fictícia e rejeita ferramenta desconhecida',
   assert.deepEqual(list.result.tools.map(x=>x.name),['consultar_resumo_ficticio']);
   const good=await (await call('tools/call',{name:'consultar_resumo_ficticio',arguments:{}})).json();
   assert.equal(JSON.parse(good.result.content[0].text).source,'fictional-demo');
+  const extra=await (await call('tools/call',{name:'consultar_resumo_ficticio',arguments:{conta:'real'}})).json();
+  assert.equal(extra.error.code,-32602);
+  const wrongType=await (await call('tools/call',{name:'consultar_resumo_ficticio',arguments:['real']})).json();
+  assert.equal(wrongType.error.code,-32602);
   const bad=await (await call('tools/call',{name:'registrar_despesa',arguments:{}})).json();
   assert.equal(bad.error.code,-32601);
  }finally{child.kill();}
