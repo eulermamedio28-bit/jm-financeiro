@@ -9,6 +9,7 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, opening_cents INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS categories(id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE);
 CREATE TABLE IF NOT EXISTS entries(id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('expense','income')), account_id TEXT NOT NULL REFERENCES accounts(id), category_id TEXT NOT NULL REFERENCES categories(id), description TEXT NOT NULL, amount_cents INTEGER NOT NULL CHECK(amount_cents > 0), created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS transfers(id TEXT PRIMARY KEY, from_account_id TEXT NOT NULL REFERENCES accounts(id), to_account_id TEXT NOT NULL REFERENCES accounts(id), amount_cents INTEGER NOT NULL CHECK(amount_cents > 0), description TEXT NOT NULL, created_at TEXT NOT NULL, CHECK(from_account_id <> to_account_id));
 CREATE TABLE IF NOT EXISTS request_log(key TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, response_json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY, action TEXT NOT NULL, record_id TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL);
 `);
@@ -28,6 +29,8 @@ const handlers = {
  'GET /accounts': () => db.prepare('SELECT * FROM accounts ORDER BY name').all(),
  'GET /categories': () => db.prepare('SELECT * FROM categories ORDER BY name').all(),
  'GET /entries': () => db.prepare('SELECT * FROM entries ORDER BY created_at DESC LIMIT 200').all(),
+ 'GET /transfers': () => db.prepare('SELECT * FROM transfers ORDER BY created_at DESC LIMIT 200').all(),
+ 'GET /account-balances': () => db.prepare(`SELECT a.id,a.name,a.opening_cents + COALESCE((SELECT SUM(CASE WHEN e.kind='income' THEN e.amount_cents ELSE -e.amount_cents END) FROM entries e WHERE e.account_id=a.id),0) + COALESCE((SELECT SUM(t.amount_cents) FROM transfers t WHERE t.to_account_id=a.id),0) - COALESCE((SELECT SUM(t.amount_cents) FROM transfers t WHERE t.from_account_id=a.id),0) AS balance_cents FROM accounts a ORDER BY a.name`).all(),
  'GET /audit': () => db.prepare('SELECT * FROM audit ORDER BY created_at DESC LIMIT 200').all(),
  'GET /summary': () => {
    const rows=db.prepare("SELECT kind, COALESCE(SUM(amount_cents),0) AS total FROM entries GROUP BY kind").all();
@@ -45,6 +48,11 @@ const handlers = {
  'POST /categories': b => {
    if(!requiredString(b.name)) throw Error('Categoria inválida');
    const r={id:id(),name:b.name.trim()};db.prepare('INSERT INTO categories VALUES (@id,@name)').run(r);return r;
+ },
+ 'POST /transfers': b => {
+   if (!requiredString(b.from_account_id) || !requiredString(b.to_account_id) || b.from_account_id===b.to_account_id || !cents(b.amount_cents) || !requiredString(b.description,240)) throw Error('Transferência inválida');
+   const r={id:id(),from_account_id:b.from_account_id,to_account_id:b.to_account_id,amount_cents:b.amount_cents,description:b.description.trim(),created_at:now()};
+   db.prepare('INSERT INTO transfers VALUES (@id,@from_account_id,@to_account_id,@amount_cents,@description,@created_at)').run(r);return r;
  },
  'POST /entries': b => {
    if(!['expense','income'].includes(b.kind) || !requiredString(b.description,240) || !cents(b.amount_cents) || !requiredString(b.account_id) || !requiredString(b.category_id)) throw Error('Lançamento inválido');
