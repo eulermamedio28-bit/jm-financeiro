@@ -53,6 +53,8 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal(entry.status,200);
   const again=await request('/entries','POST',body,'test-entry-0001');
   assert.deepEqual(again.data,entry.data);
+  const changed=await request('/entries','POST',{...body,amount_cents:5000},'test-entry-0001');
+  assert.equal(changed.status,400,'Não deve reutilizar a mesma chave para outro valor');
   assert.equal((await request('/entries')).data.length,1);
   assert.equal((await request('/audit')).data.length,3);
  } finally {child.kill();rmSync(dir,{recursive:true,force:true});}
