@@ -36,6 +36,7 @@ test('consulta fictícia exige token válido e não expõe rotas de escrita',asy
   assert.ok(ready);
   const url='http://127.0.0.1:'+port+'/agent/demo-summary';
   assert.equal((await fetch(url)).status,401);
+  assert.equal((await fetch('http://127.0.0.1:'+port+'/mcp',{method:'POST'})).status,401);
   assert.equal((await fetch(url,{headers:{authorization:'Bearer errado'}})).status,401);
   const r=await fetch(url,{headers:{authorization:'Bearer '+token}});
   assert.equal(r.status,200);
@@ -44,5 +45,26 @@ test('consulta fictícia exige token válido e não expõe rotas de escrita',asy
   assert.equal(body.balance_cents,111000);
   assert.equal((await fetch(url,{method:'POST',headers:{authorization:'Bearer '+token}})).status,404);
   assert.equal((await fetch('http://127.0.0.1:'+port+'/entries',{method:'POST',headers:{authorization:'Bearer '+token}})).status,404);
+ }finally{child.kill();}
+});
+
+test('MCP oferece somente consulta fictícia e rejeita ferramenta desconhecida',async()=>{
+ const port=22000+Math.floor(Math.random()*1000);
+ const token='token-mcp-ficticio-'.padEnd(64,'z');
+ const child=spawn(process.execPath,['server.js'],{cwd:new URL('.',import.meta.url),env:{...process.env,PORT:String(port),JM_GATEWAY_READ_TOKEN:token},stdio:'ignore'});
+ try{
+  let ready=false;
+  for(let i=0;i<30;i++){
+   try{if((await fetch('http://127.0.0.1:'+port+'/health')).ok){ready=true;break;}}catch{}
+   await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  assert.ok(ready);
+  const call=async(method,params)=>fetch('http://127.0.0.1:'+port+'/mcp',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
+  const list=await (await call('tools/list',{})).json();
+  assert.deepEqual(list.result.tools.map(x=>x.name),['consultar_resumo_ficticio']);
+  const good=await (await call('tools/call',{name:'consultar_resumo_ficticio',arguments:{}})).json();
+  assert.equal(JSON.parse(good.result.content[0].text).source,'fictional-demo');
+  const bad=await (await call('tools/call',{name:'registrar_despesa',arguments:{}})).json();
+  assert.equal(bad.error.code,-32601);
  }finally{child.kill();}
 });
