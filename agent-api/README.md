@@ -50,3 +50,11 @@ Com as variáveis de ambiente de teste configuradas e o servidor iniciado, abra 
 Rotas web: `GET /pilot`, `POST /pilot/login`, `GET /pilot/me`, `GET /pilot/summary`, `POST /pilot/logout`. As operações de escrita permanecem restritas à API de desenvolvimento com suas credenciais adicionais.
 
 **Não está publicado nem acessível pelo celular remotamente.** Não utilizar dados reais. Ainda faltam testes completos, HTTPS, autenticação de produção, proteção adicional contra CSRF e integração com o app Android/PWA original.
+
+## Fase 5: adaptador de ferramentas do agente (somente testes locais)
+
+`agent-adapter.js` mapeia consultas e escritas da API experimental para nomes de ferramentas. Por padrão, aceita somente `http://127.0.0.1:8787`; rejeita endereços públicos e exige credenciais fictícias em memória. Não é um plugin ChatGPT, não oferece acesso remoto e não deve ser conectado a dados reais.
+
+`read(nome)` executa consultas autenticadas. Para escritas, `prepareWrite(nome, dados)` **não envia requisição** e devolve um resumo e uma chave de operação. Somente `executeApproved(prepared, {confirmed:true,operationKey:prepared.idempotencyKey,summary:prepared.summary})` envia a escrita. A aprovação deve ser obtida de Euler em interação separada; **nunca gerar aprovação automaticamente**. O adaptador não substitui uma camada de autorização confiável no servidor; sua verificação de confirmação é somente uma proteção do fluxo de desenvolvimento.
+
+Testes automatizados verificam que escritas sem aprovação são bloqueadas e que destinos externos são recusados. Falta hospedar serviço privado HTTPS, autenticação de serviço, autorização server-side por operação, integração real com o aplicativo e plugin privado. Não inserir segredos no GitHub.
