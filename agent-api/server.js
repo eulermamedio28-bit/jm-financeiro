@@ -17,10 +17,11 @@ db.exec('PRAGMA foreign_keys = ON');
 const token = process.env.JM_API_TOKEN;
 if (!token || token.length < 32) throw new Error('Configure JM_API_TOKEN com pelo menos 32 caracteres aleatórios');
 const actor = 'ambiente-dev';
-const pilotUser = process.env.JM_PILOT_USER || 'euler';
 const pilotSession = process.env.JM_PILOT_SESSION;
 if (!pilotSession || pilotSession.length < 32) throw new Error('Configure JM_PILOT_SESSION com pelo menos 32 caracteres aleatórios');
 const validSession = req => safeEqual(req.headers['x-jm-pilot-session'] || '',pilotSession);
+const allowedOrigin = process.env.JM_ALLOWED_ORIGIN || '';
+const hasForbiddenOrigin = req => !!req.headers.origin && req.headers.origin !== allowedOrigin;
 
 if (process.env.NODE_ENV === 'production') throw new Error('API experimental não pode iniciar em produção');
 const json = (res, status, data) => {res.writeHead(status, {'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(data));};
@@ -69,6 +70,7 @@ const handlers = {
  }
 };
 const server=http.createServer(async(req,res)=>{
+  if(hasForbiddenOrigin(req)) return json(res,403,{error:'Origem não autorizada'});
   if(!safeEqual(req.headers.authorization||'', 'Bearer '+token) || !validSession(req)) return json(res,401,{error:'Não autorizado'});
   const route=req.method+' '+new URL(req.url,'http://localhost').pathname;
   if(!handlers[route]) return json(res,404,{error:'Rota inexistente'});
