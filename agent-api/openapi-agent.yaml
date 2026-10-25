@@ -1,0 +1,244 @@
+openapi: 3.1.0
+info:
+  title: JM Financeiro - API experimental do agente
+  version: 0.1.0
+  description: >-
+    Contrato de desenvolvimento, somente para dados fictícios. NÃO conectar
+    a sistemas reais ou publicar esta API local na internet.
+servers:
+  - url: http://127.0.0.1:8787
+    description: Somente localhost; não utilizável remotamente pelo ChatGPT
+security:
+  - DeveloperToken: []
+    PilotHeader: []
+    UserSession: []
+components:
+  securitySchemes:
+    DeveloperToken:
+      type: http
+      scheme: bearer
+      description: Token de desenvolvimento JM_API_TOKEN
+    PilotHeader:
+      type: apiKey
+      in: header
+      name: X-JM-Pilot-Session
+    UserSession:
+      type: apiKey
+      in: header
+      name: X-JM-User-Session
+  schemas:
+    AmountCents:
+      type: integer
+      minimum: 1
+      maximum: 100000000000
+    Account:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        opening_cents: { type: integer }
+    Category:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+    Entry:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [income, expense] }
+        account_id: { type: string }
+        category_id: { type: string }
+        description: { type: string }
+        amount_cents: { type: integer }
+        created_at: { type: string }
+    Transfer:
+      type: object
+      properties:
+        id: { type: string }
+        from_account_id: { type: string }
+        to_account_id: { type: string }
+        description: { type: string }
+        amount_cents: { type: integer }
+        created_at: { type: string }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: '^[-_a-zA-Z0-9]{12,128}$'
+  responses:
+    Unauthorized:
+      description: Sessão ou credenciais inválidas
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+paths:
+  /auth/login:
+    post:
+      operationId: loginPiloto
+      summary: Autenticar usuário Euler no piloto local
+      description: Retorna token de sessão individual; não expor em logs.
+      security:
+        - DeveloperToken: []
+          PilotHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, const: euler }
+                password: { type: string, format: password }
+      responses:
+        '200': { description: Sessão criada }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/me:
+    get:
+      operationId: identificarUsuario
+      summary: Identificar usuário autenticado
+      responses:
+        '200': { description: Usuário autenticado }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      operationId: encerrarSessao
+      summary: Revogar sessão individual
+      responses:
+        '200': { description: Sessão encerrada }
+  /accounts:
+    get:
+      operationId: listarContas
+      summary: Listar contas financeiras fictícias
+      responses:
+        '200':
+          description: Contas
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Account' } }
+    post:
+      operationId: criarConta
+      summary: Criar conta fictícia
+      description: EXIGE confirmação explícita do usuário antes da chamada.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                opening_cents: { type: integer }
+      responses:
+        '200': { description: Conta criada }
+  /categories:
+    get:
+      operationId: listarCategorias
+      summary: Listar categorias fictícias
+      responses:
+        '200': { description: Categorias }
+    post:
+      operationId: criarCategoria
+      summary: Criar categoria fictícia
+      description: EXIGE confirmação explícita do usuário antes da chamada.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '200': { description: Categoria criada }
+  /summary:
+    get:
+      operationId: consultarResumo
+      summary: Consultar receitas, despesas e saldo fictícios
+      responses:
+        '200':
+          description: Resumo em centavos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  income_cents: { type: integer }
+                  expense_cents: { type: integer }
+                  opening_cents: { type: integer }
+                  balance_cents: { type: integer }
+  /account-balances:
+    get:
+      operationId: consultarSaldos
+      summary: Consultar saldo por conta fictícia
+      responses:
+        '200': { description: Saldos por conta }
+  /entries:
+    get:
+      operationId: listarLancamentos
+      summary: Listar até 200 lançamentos fictícios
+      responses:
+        '200': { description: Lançamentos }
+    post:
+      operationId: registrarLancamento
+      summary: Registrar receita ou despesa fictícia
+      description: EXIGE confirmação explícita do usuário antes da chamada.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, account_id, category_id, description, amount_cents]
+              properties:
+                kind: { type: string, enum: [income, expense] }
+                account_id: { type: string }
+                category_id: { type: string }
+                description: { type: string }
+                amount_cents: { $ref: '#/components/schemas/AmountCents' }
+      responses:
+        '200': { description: Lançamento registrado }
+  /transfers:
+    get:
+      operationId: listarTransferencias
+      summary: Listar até 200 transferências fictícias
+      responses:
+        '200': { description: Transferências }
+    post:
+      operationId: transferirEntreContas
+      summary: Transferir entre contas fictícias
+      description: EXIGE confirmação explícita do usuário antes da chamada.
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from_account_id, to_account_id, description, amount_cents]
+              properties:
+                from_account_id: { type: string }
+                to_account_id: { type: string }
+                description: { type: string }
+                amount_cents: { $ref: '#/components/schemas/AmountCents' }
+      responses:
+        '200': { description: Transferência registrada }
+  /audit:
+    get:
+      operationId: consultarAuditoria
+      summary: Consultar últimas 200 ações de escrita
+      responses:
+        '200': { description: Auditoria }
