@@ -18,7 +18,9 @@ const authorized=req=>{
 const base='https://jm-financeiro-agent-gateway-test.onrender.com';
 const oauthSecret=process.env.JM_OAUTH_SIGNING_SECRET||'';
 const loginSecret=process.env.JM_OAUTH_LOGIN_SECRET||'';
-const oauthReady=oauthSecret.length>=48&&loginSecret.length>=24;
+// Compatibilidade temporária com a variável cadastrada sem o prefixo JM_.
+const alternateLoginSecret=process.env.OAUTH_LOGIN_SECRET||'';
+const oauthReady=oauthSecret.length>=48&&(loginSecret.length>=24||alternateLoginSecret.length>=24);
 const clients=new Map();
 const codes=new Map();
 const b64=v=>Buffer.from(v).toString('base64url');
@@ -60,7 +62,7 @@ async function oauth(req,res,path,url){
    const fields=['client_id','redirect_uri','response_type','code_challenge','code_challenge_method','state','scope'].map(k=>'<input type="hidden" name="'+k+'" value="'+String(p.get(k)||'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;')+'">').join('');
    return html(res,200,'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>JM Financeiro - Autorizar</title><body><h2>JM Financeiro - Testes</h2><p>Autorizar somente consultas fictícias, sem dados reais.</p><form method="post" action="/oauth/authorize">'+fields+'<label>Senha de autorização <input type="password" name="password" required autocomplete="off"></label><button type="submit">Autorizar</button></form></body></html>');
   }
-  if(!secureEq(p.get('password')||'',loginSecret))return html(res,403,'Autorização recusada.');
+  if(![loginSecret,alternateLoginSecret].some(secret=>secret.length>=24&&secureEq(p.get('password')||'',secret)))return html(res,403,'Autorização recusada. Verifique a senha configurada no Render e tente iniciar uma nova conexão.');
   const code=crypto.randomBytes(32).toString('base64url');codes.set(code,{client_id:p.get('client_id'),redirect,challenge,exp:Date.now()+120000});
   const dest=new URL(redirect);dest.searchParams.set('code',code);if(state)dest.searchParams.set('state',state);res.writeHead(302,{location:dest.toString(),'cache-control':'no-store'});return res.end();
  }
