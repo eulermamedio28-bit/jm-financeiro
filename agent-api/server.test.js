@@ -64,6 +64,9 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const records=(await request('/entries')).data;
   assert.equal(records[0].amount_cents,2500);
   assert.equal(records[0].kind,'expense');
+  const summary=await request('/summary');
+  assert.equal(summary.status,200);
+  assert.deepEqual(summary.data,{income_cents:0,expense_cents:2500,opening_cents:10000,balance_cents:7500});
  } finally {
   if(child.exitCode===null && child.signalCode===null) {
    child.kill();
