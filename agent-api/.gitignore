@@ -1,0 +1,9 @@
+# Dados locais e credenciais nunca devem ser enviados ao GitHub
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+.env
+.env.*
+!.env.example
+node_modules/
