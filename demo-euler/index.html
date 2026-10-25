@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>JM Financeiro — Demonstração</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#f9e9d4;background:#210b12}
+*{box-sizing:border-box}body{margin:0}main{max-width:520px;margin:auto;padding:22px 18px 56px}
+header{text-align:center;padding:22px 0}h1{font-size:27px;margin:4px 0;color:#f6cf83}h2{font-size:18px}
+small,.muted{color:#d3b6b3}.notice{background:#3e1921;border:1px solid #bd935c;padding:13px;border-radius:12px;line-height:1.5}
+.card{background:#32131e;border:1px solid #6d3b40;border-radius:18px;padding:19px;margin:16px 0}
+.amount{font-size:30px;font-weight:800;color:#f5d69a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid .amount{font-size:20px}
+label{display:block;margin:12px 0 5px}input,select{width:100%;background:#210b12;color:#fff;border:1px solid #986a67;border-radius:10px;padding:13px;font-size:16px}
+button{border:0;border-radius:12px;background:#d9ae6e;color:#2d0c15;padding:14px;font-size:16px;font-weight:750;width:100%;margin-top:15px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #fff}
+.entry{display:flex;justify-content:space-between;border-bottom:1px solid #5e343a;padding:12px 0;gap:12px}
+.plus{color:#9de0a5}.minus{color:#ffb4b4}.pill{font-size:12px;color:#f8d9a3}
+</style></head>
+<body><main><header><div class="pill">RESTAURANTE JM • AMBIENTE EXPERIMENTAL</div><h1>JM Financeiro</h1><div>Prévia de teste — Euler</div></header>
+<div class="notice"><strong>DEMONSTRAÇÃO FICTÍCIA.</strong> Nenhum dado real é consultado, enviado ou alterado. Os lançamentos existem apenas nesta página e desaparecem quando ela é recarregada. Não informe dados financeiros verdadeiros.</div>
+<section class="card"><small>Saldo demonstrativo</small><div class="amount" id="balance">R$ 0,00</div></section>
+<div class="grid"><section class="card"><small>Receitas</small><div class="amount plus" id="income">R$ 0,00</div></section><section class="card"><small>Despesas</small><div class="amount minus" id="expense">R$ 0,00</div></section></div>
+<section class="card"><h2>Novo lançamento de teste</h2><form id="form">
+<label for="kind">Tipo</label><select id="kind"><option value="expense">Despesa</option><option value="income">Receita</option></select>
+<label for="description">Descrição fictícia</label><input id="description" required maxlength="80" placeholder="Ex.: Compra de teste">
+<label for="value">Valor fictício (R$)</label><input id="value" type="number" required min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="25,00">
+<button type="submit">Adicionar somente à demonstração</button></form></section>
+<section class="card"><h2>Movimentações fictícias</h2><div id="entries"></div><button id="reset" type="button">Reiniciar demonstração</button></section>
+</main><script>
+'use strict';
+const initial=[{kind:'income',description:'Vendas de demonstração',cents:120000},{kind:'expense',description:'Insumos de demonstração',cents:32500}];
+let entries=initial.map(x=>({...x}));
+const money=c=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(c/100);
+const $=id=>document.getElementById(id);
+function render(){
+const income=entries.filter(x=>x.kind==='income').reduce((s,x)=>s+x.cents,0);
+const expense=entries.filter(x=>x.kind==='expense').reduce((s,x)=>s+x.cents,0);
+$('balance').textContent=money(income-expense);$('income').textContent=money(income);$('expense').textContent=money(expense);
+$('entries').replaceChildren();
+for(const e of entries.slice().reverse()){
+ const row=document.createElement('div');row.className='entry';
+ const name=document.createElement('span');name.textContent=e.description;
+ const value=document.createElement('strong');value.className=e.kind==='income'?'plus':'minus';
+ value.textContent=(e.kind==='income'?'+ ':'− ')+money(e.cents);
+ row.append(name,value);$('entries').append(row);
+}
+}
+$('form').addEventListener('submit',event=>{
+event.preventDefault();const value=Number($('value').value);
+const cents=Math.round(value*100);
+if(!Number.isSafeInteger(cents)||cents<=0||cents>100000000){alert('Informe um valor fictício válido.');return;}
+const description=$('description').value.trim();
+if(!description)return;
+entries.push({kind:$('kind').value,description,cents});$('form').reset();render();
+});
+$('reset').addEventListener('click',()=>{entries=initial.map(x=>({...x}));render();});
+render();
+</script></body></html>
