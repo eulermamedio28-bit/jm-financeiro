@@ -91,3 +91,27 @@ test('MCP anuncia protocolo e não oferece operações financeiras',async()=>{
   assert.equal((await fetch(url,{method:'POST',headers,body:'{invalid'})).status,400);
  }finally{child.kill();}
 });
+
+test('MCP valida Origin, versão e notificação sem corpo',async()=>{
+ const port=25000+Math.floor(Math.random()*1000);
+ const token='token-compatibilidade-'.padEnd(64,'c');
+ const child=spawn(process.execPath,['server.js'],{cwd:new URL('.',import.meta.url),env:{...process.env,PORT:String(port),JM_GATEWAY_READ_TOKEN:token},stdio:'ignore'});
+ try{
+  let ready=false;
+  for(let i=0;i<30;i++){
+   try{if((await fetch('http://127.0.0.1:'+port+'/health')).ok){ready=true;break;}}catch{}
+   await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  assert.ok(ready);
+  const url='http://127.0.0.1:'+port+'/mcp';
+  const headers={authorization:'Bearer '+token,'content-type':'application/json',accept:'application/json, text/event-stream'};
+  const send=(method,extraHeaders={})=>fetch(url,{method:'POST',headers:{...headers,...extraHeaders},body:JSON.stringify({jsonrpc:'2.0',id:method==='notifications/initialized'?undefined:1,method,params:{}})});
+  assert.equal((await send('tools/list',{origin:'https://example.invalid'})).status,403);
+  assert.equal((await send('tools/list',{'mcp-protocol-version':'2099-01-01'})).status,400);
+  const accepted=await send('notifications/initialized');
+  assert.equal(accepted.status,202);
+  assert.equal(await accepted.text(),'');
+  const allowed=await send('tools/list',{'mcp-protocol-version':'2025-03-26'});
+  assert.equal(allowed.status,200);
+ }finally{child.kill();}
+});
