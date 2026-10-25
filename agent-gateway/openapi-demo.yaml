@@ -1,0 +1,57 @@
+openapi: 3.1.0
+info:
+  title: JM Financeiro — Gateway de Demonstração
+  version: 0.1.0
+  description: >-
+    Somente dados fictícios. Este contrato não dá acesso ao aplicativo JM
+    Financeiro, não permite escrita e não deve ser usado com dados reais.
+servers:
+  - url: https://jm-financeiro-agent-gateway-test.onrender.com
+paths:
+  /health:
+    get:
+      operationId: verificarGateway
+      summary: Verificar estado público do gateway de demonstração
+      responses:
+        '200':
+          description: Estado do gateway
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string}
+                  mode: {type: string}
+                  financialData: {type: boolean}
+  /agent/demo-summary:
+    get:
+      operationId: consultarResumoFicticio
+      summary: Consultar resumo financeiro de demonstração, protegido por token
+      description: Retorna números fixos fictícios; não acessa contas ou banco de dados real.
+      security:
+        - DemoBearer: []
+      responses:
+        '200':
+          description: Resumo de demonstração
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source: {type: string, const: fictional-demo}
+                  currency: {type: string, const: BRL}
+                  income_cents: {type: integer}
+                  expense_cents: {type: integer}
+                  balance_cents: {type: integer}
+        '401':
+          description: Credencial ausente ou inválida
+        '503':
+          description: Credencial ainda não configurada no servidor
+components:
+  securitySchemes:
+    DemoBearer:
+      type: http
+      scheme: bearer
+      description: >-
+        Credencial secreta guardada fora do repositório; nunca incluir
+        o valor em arquivos do plugin, prompts, logs ou mensagens.
