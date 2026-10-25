@@ -13,7 +13,7 @@ const port=20000+Math.floor(Math.random()*30000);
 const base='http://127.0.0.1:'+port;
 const child=spawn(process.execPath,['server.js'],{
  cwd:new URL('.',import.meta.url).pathname,
- env:{...process.env,JM_API_TOKEN:token,JM_PILOT_SESSION:pilotSession,JM_DB_PATH:join(dir,'test.sqlite'),PORT:String(port)},
+ env:{...process.env,JM_API_TOKEN:token,JM_PILOT_SESSION:pilotSession,JM_ALLOWED_ORIGIN:'http://localhost:4321',JM_DB_PATH:join(dir,'test.sqlite'),PORT:String(port)},
  stdio:['ignore','pipe','pipe']
 });
 let output='';
@@ -43,6 +43,11 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal(wrongSession.status,401);
   const untrustedOrigin=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession,origin:'https://exemplo-invalido.test'}});
   assert.equal(untrustedOrigin.status,403);
+  const trustedOrigin=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession,origin:'http://localhost:4321'}});
+  assert.equal(trustedOrigin.status,200);
+  const untrustedWrite=await fetch(base+'/accounts',{method:'POST',headers:{authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession,origin:'https://exemplo-invalido.test','idempotency-key':'origin-denied-0001','content-type':'application/json'},body:JSON.stringify({name:'Conta não autorizada'})});
+  assert.equal(untrustedWrite.status,403);
+  assert.equal((await request('/accounts')).data.length,0);
   const wrongAuth=await fetch(base+'/entries',{headers:{authorization:'Bearer invalid-token'}});
   assert.equal(wrongAuth.status,401);
   assert.equal((await request('/accounts')).data.length,0);
