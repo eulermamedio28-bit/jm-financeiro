@@ -82,6 +82,9 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal(afterTransfer.balance_cents,7500,'Transferência não muda saldo consolidado');
   assert.equal(afterTransfer.income_cents,0,'Transferência não é receita');
   assert.equal(afterTransfer.expense_cents,2500,'Transferência não é despesa');
+  const sameAccount=await request('/transfers','POST',{...transferBody,to_account_id:account.data.id},'test-transfer-same-0001');
+  assert.equal(sameAccount.status,400);
+  assert.equal((await request('/transfers')).data.length,1);
   assert.equal((await request('/audit')).data.length,5);
  } finally {
   if(child.exitCode===null && child.signalCode===null) {
