@@ -85,6 +85,9 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const sameAccount=await request('/transfers','POST',{...transferBody,to_account_id:account.data.id},'test-transfer-same-0001');
   assert.equal(sameAccount.status,400);
   assert.equal((await request('/transfers')).data.length,1);
+  const insufficient=await request('/transfers','POST',{...transferBody,amount_cents:999999},'test-transfer-over-0001');
+  assert.equal(insufficient.status,400);
+  assert.equal((await request('/transfers')).data.length,1);
   assert.equal((await request('/audit')).data.length,5);
  } finally {
   if(child.exitCode===null && child.signalCode===null) {
