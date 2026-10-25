@@ -98,8 +98,9 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal((await request('/audit')).data.length,5);
  } finally {
   if(child.exitCode===null && child.signalCode===null) {
+   const exited=new Promise(resolve=>child.once('exit',resolve));
    child.kill();
-   await new Promise(resolve=>child.once('exit',resolve));
+   await exited;
   }
   rmSync(dir,{recursive:true,force:true});
  }
