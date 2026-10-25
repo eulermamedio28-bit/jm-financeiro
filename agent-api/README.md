@@ -15,8 +15,10 @@ npm start
 
 A API escuta somente em `127.0.0.1:8787`. Use cabeçalho `Authorization: Bearer <JM_API_TOKEN>`. Para toda requisição POST, envie `Idempotency-Key` com identificador único (mínimo 12 caracteres). O mesmo identificador retorna a mesma resposta sem duplicar lançamentos.
 
-Rotas: `GET /health`, `GET /accounts`, `POST /accounts`, `GET /categories`, `POST /categories`, `GET /entries`, `POST /entries`, `GET /audit`.
+Rotas: `GET /health`, `GET /accounts`, `POST /accounts`, `GET /categories`, `POST /categories`, `GET /entries`, `POST /entries`, `GET /transfers`, `POST /transfers`, `GET /account-balances`, `GET /summary`, `GET /audit`.
+
+Transferências internas movimentam valores entre contas, mas **não** entram como receitas ou despesas e não alteram o saldo consolidado. A API ainda não verifica saldo disponível antes de transferir: **somente testes fictícios**.
 
 Exemplo de lançamento fictício: `POST /entries` com `{"kind":"expense","account_id":"UUID","category_id":"UUID","description":"Despesa teste","amount_cents":2500}`.
 
-**Limitações importantes:** token único de desenvolvimento; sem HTTPS; sem contas de usuários, confirmação, backup remoto, controle de acesso individual, transferências ou sincronização PWA. Não expor à internet. Próxima etapa: testes automatizados, validação de esquema e autenticação segura antes de MCP.
+**Limitações importantes:** token único de desenvolvimento; sem HTTPS; sem contas de usuários, confirmação, backup remoto, controle de acesso individual ou sincronização PWA. Não expor à internet. Próxima etapa: testes automatizados, validação de esquema e autenticação segura antes de MCP.
