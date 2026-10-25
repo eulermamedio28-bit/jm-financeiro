@@ -29,6 +29,13 @@ const handlers = {
  'GET /categories': () => db.prepare('SELECT * FROM categories ORDER BY name').all(),
  'GET /entries': () => db.prepare('SELECT * FROM entries ORDER BY created_at DESC LIMIT 200').all(),
  'GET /audit': () => db.prepare('SELECT * FROM audit ORDER BY created_at DESC LIMIT 200').all(),
+ 'GET /summary': () => {
+   const rows=db.prepare("SELECT kind, COALESCE(SUM(amount_cents),0) AS total FROM entries GROUP BY kind").all();
+   const income_cents=Number(rows.find(x=>x.kind==='income')?.total??0);
+   const expense_cents=Number(rows.find(x=>x.kind==='expense')?.total??0);
+   const opening_cents=Number(db.prepare('SELECT COALESCE(SUM(opening_cents),0) AS total FROM accounts').get().total);
+   return {income_cents,expense_cents,opening_cents,balance_cents:opening_cents+income_cents-expense_cents};
+ },
  'POST /accounts': b => {
    if(!requiredString(b.name)) throw Error('Nome de conta inválido');
    if(b.opening_cents!==undefined && (!Number.isSafeInteger(b.opening_cents) || Math.abs(b.opening_cents)>100000000000)) throw Error('Saldo inicial inválido');
