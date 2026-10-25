@@ -116,7 +116,6 @@ const server=http.createServer(async(req,res)=>{
   }
   if(hasForbiddenOrigin(req)) return json(res,403,{error:'Origem não autorizada'});
   if(!safeEqual(req.headers.authorization||'', 'Bearer '+token) || !validSession(req)) return json(res,401,{error:'Não autorizado'});
-  const route=req.method+' '+new URL(req.url,'http://localhost').pathname;
   if(route==='POST /auth/login'){
     let raw='';
     try{
