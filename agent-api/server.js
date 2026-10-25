@@ -51,6 +51,9 @@ const handlers = {
  },
  'POST /transfers': b => {
    if (!requiredString(b.from_account_id) || !requiredString(b.to_account_id) || b.from_account_id===b.to_account_id || !cents(b.amount_cents) || !requiredString(b.description,240)) throw Error('Transferência inválida');
+   const balances=handlers['GET /account-balances']();
+   const source=balances.find(a=>a.id===b.from_account_id);
+   if(!source || source.balance_cents<b.amount_cents) throw Error('Saldo insuficiente');
    const r={id:id(),from_account_id:b.from_account_id,to_account_id:b.to_account_id,amount_cents:b.amount_cents,description:b.description.trim(),created_at:now()};
    db.prepare('INSERT INTO transfers VALUES (@id,@from_account_id,@to_account_id,@amount_cents,@description,@created_at)').run(r);return r;
  },
