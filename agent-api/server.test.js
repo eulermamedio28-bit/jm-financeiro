@@ -46,6 +46,25 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal(login.status,200);
   userSession=login.data.token;
   assert.deepEqual((await request('/auth/me')).data,{username:'euler'});
+  const pilotPage=await fetch(base+'/pilot');
+  assert.equal(pilotPage.status,200);
+  assert.match(await pilotPage.text(),/JM Financeiro/);
+  assert.equal((await fetch(base+'/pilot/summary')).status,401,'Resumo sem cookie deve ser negado');
+  const pilotLogin=await fetch(base+'/pilot/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:'euler',password})});
+  assert.equal(pilotLogin.status,200);
+  const cookie=pilotLogin.headers.get('set-cookie');
+  assert.match(cookie,/HttpOnly/);
+  assert.match(cookie,/SameSite=Strict/);
+  const browserCookie=cookie.split(';')[0];
+  const browserSummary=await fetch(base+'/pilot/summary',{headers:{cookie:browserCookie}});
+  assert.equal(browserSummary.status,200);
+  assert.equal((await browserSummary.json()).balance_cents,0);
+  const crossSite=await fetch(base+'/pilot/summary',{headers:{cookie:browserCookie,origin:'https://invasor.test'}});
+  assert.equal(crossSite.status,403);
+  const pilotLogout=await fetch(base+'/pilot/logout',{method:'POST',headers:{cookie:browserCookie}});
+  assert.equal(pilotLogout.status,200);
+  assert.equal((await fetch(base+'/pilot/summary',{headers:{cookie:browserCookie}})).status,401);
+
   const noAuth=await fetch(base+'/accounts');
   assert.equal(noAuth.status,401);
   const missingSession=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token}});
