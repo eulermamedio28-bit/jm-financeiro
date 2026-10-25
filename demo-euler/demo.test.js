@@ -21,8 +21,8 @@ test('script embutido tem sintaxe válida',async()=>{
 const login=readFileSync(join(import.meta.dirname,'login.html'),'utf8');
 test('prévia de login não coleta senhas nem faz requisições',()=>{
  assert.match(login,/Protótipo de interface/);
- assert.match(login,/não está conectada à API/);
- assert.match(login,/type="password"[^>]*disabled/);
+ assert.match(login,/Ambiente local de testes/);
+ assert.match(login,/type="password"[^>]*required/);
  assert.match(login,/Entrar \(aguardando integração\)/);
  assert.doesNotMatch(login,/fetch\(|XMLHttpRequest|localStorage|sessionStorage/);
  assert.match(login,/name="viewport"/);
