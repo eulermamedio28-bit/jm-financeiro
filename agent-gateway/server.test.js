@@ -68,3 +68,26 @@ test('MCP oferece somente consulta fictícia e rejeita ferramenta desconhecida',
   assert.equal(bad.error.code,-32601);
  }finally{child.kill();}
 });
+
+test('MCP anuncia protocolo e não oferece operações financeiras',async()=>{
+ const port=24000+Math.floor(Math.random()*1000);
+ const token='token-protocolo-ficticio-'.padEnd(64,'q');
+ const child=spawn(process.execPath,['server.js'],{cwd:new URL('.',import.meta.url),env:{...process.env,PORT:String(port),JM_GATEWAY_READ_TOKEN:token},stdio:'ignore'});
+ try{
+  let ready=false;
+  for(let i=0;i<30;i++){
+   try{if((await fetch('http://127.0.0.1:'+port+'/health')).ok){ready=true;break;}}catch{}
+   await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  assert.ok(ready);
+  const url='http://127.0.0.1:'+port+'/mcp';
+  const headers={authorization:'Bearer '+token,'content-type':'application/json'};
+  const initialize=await fetch(url,{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-03-26',capabilities:{},clientInfo:{name:'test',version:'1'}}})});
+  assert.equal(initialize.status,200);
+  const response=await initialize.json();
+  assert.equal(response.result.protocolVersion,'2025-03-26');
+  assert.equal(response.result.serverInfo.name,'jm-financeiro-demo');
+  assert.equal((await fetch(url,{headers})).status,405);
+  assert.equal((await fetch(url,{method:'POST',headers,body:'{invalid'})).status,400);
+ }finally{child.kill();}
+});
