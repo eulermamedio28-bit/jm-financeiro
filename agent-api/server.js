@@ -75,7 +75,7 @@ const handlers = {
 };
 const pilotHtml=readFileSync(new URL('../demo-euler/login.html',import.meta.url),'utf8');
 const cookieSession=req=>{
- const match=(req.headers.cookie||'').match(/(?:^|;\\s*)jm_pilot=([a-f0-9]{64})(?:;|$)/);
+ const match=(req.headers.cookie||'').match(/(?:^|;\s*)jm_pilot=([a-f0-9]{64})(?:;|$)/);
  return match?.[1]||'';
 };
 const pilotOriginOk=req=>{
