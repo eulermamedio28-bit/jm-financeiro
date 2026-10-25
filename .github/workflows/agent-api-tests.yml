@@ -22,6 +22,11 @@ jobs:
           node-version: '22'
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
+      - name: Verificar sintaxe do servidor e do login
+        run: |
+          node --check server.js
+          node --check pilot-auth.js
+          node --check server.test.js
       - name: Testes automatizados da API (somente dados fictícios)
         run: npm test
       - name: Verificar demonstração offline
