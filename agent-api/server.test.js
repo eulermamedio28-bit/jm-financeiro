@@ -8,18 +8,19 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 const dir=mkdtempSync(join(tmpdir(),'jm-api-'));
 const token='test-token-'.padEnd(40,'x');
+const pilotSession='test-session-'.padEnd(40,'y');
 const port=20000+Math.floor(Math.random()*30000);
 const base='http://127.0.0.1:'+port;
 const child=spawn(process.execPath,['server.js'],{
  cwd:new URL('.',import.meta.url).pathname,
- env:{...process.env,JM_API_TOKEN:token,JM_DB_PATH:join(dir,'test.sqlite'),PORT:String(port)},
+ env:{...process.env,JM_API_TOKEN:token,JM_PILOT_SESSION:pilotSession,JM_DB_PATH:join(dir,'test.sqlite'),PORT:String(port)},
  stdio:['ignore','pipe','pipe']
 });
 let output='';
 child.stdout.on('data',d=>output+=d);
 child.stderr.on('data',d=>output+=d);
 async function request(path,method='GET',body, key){
- const headers={authorization:'Bearer '+token};
+ const headers={authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession};
  if(body!==undefined) headers['content-type']='application/json';
  if(key) headers['idempotency-key']=key;
  const res=await fetch(base+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
@@ -36,6 +37,10 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.ok(ready,'Servidor não iniciou: '+output);
   const noAuth=await fetch(base+'/accounts');
   assert.equal(noAuth.status,401);
+  const missingSession=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token}});
+  assert.equal(missingSession.status,401);
+  const wrongSession=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token,'x-jm-pilot-session':'invalid'}});
+  assert.equal(wrongSession.status,401);
   const wrongAuth=await fetch(base+'/entries',{headers:{authorization:'Bearer invalid-token'}});
   assert.equal(wrongAuth.status,401);
   assert.equal((await request('/accounts')).data.length,0);
