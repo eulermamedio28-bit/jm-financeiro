@@ -42,3 +42,11 @@ Para executar apenas os testes locais do módulo: `node --test pilot-auth.test.j
 Todas as rotas financeiras agora exigem, além das duas credenciais locais de desenvolvimento, `X-JM-User-Session` válido. `POST /auth/login` recebe `{ "username": "euler", "password": "..." }` e retorna token de sessão temporária. `GET /auth/me` confirma a identidade; `POST /auth/logout` revoga o token. Login e logout não exigem chave de idempotência. Auditoria registra `euler` em vez de autor genérico. Sem sessão, operações de leitura e escrita são rejeitadas.
 
 A senha acima é **fictícia, apenas para desenvolvimento**. Não reutilize senhas pessoais. Sessões são armazenadas somente na memória e se perdem ao reiniciar. Esta integração continua local, sem HTTPS, sem login visual no celular e **não é adequada à produção**. O cabeçalho de sessão jamais deve ser embutido em código público.
+
+## Tela de login local conectada (piloto, somente dados fictícios)
+
+Com as variáveis de ambiente de teste configuradas e o servidor iniciado, abra `http://127.0.0.1:8787/pilot` **no mesmo computador onde o servidor roda**. A página permite entrar com `euler` e a senha fictícia configurada em `JM_PILOT_PASSWORD_HASH`. O servidor emite cookie `HttpOnly; SameSite=Strict`, protegido por sessão de 30 minutos, e permite apenas consultar o resumo fictício; o botão Sair revoga a sessão. A tela não armazena token ou senha em localStorage.
+
+Rotas web: `GET /pilot`, `POST /pilot/login`, `GET /pilot/me`, `GET /pilot/summary`, `POST /pilot/logout`. As operações de escrita permanecem restritas à API de desenvolvimento com suas credenciais adicionais.
+
+**Não está publicado nem acessível pelo celular remotamente.** Não utilizar dados reais. Ainda faltam testes completos, HTTPS, autenticação de produção, proteção adicional contra CSRF e integração com o app Android/PWA original.
