@@ -1,0 +1,25 @@
+name: JM Agente - testes da API experimental
+on:
+  push:
+    branches: [dev/agente-financeiro-1]
+    paths:
+      - 'agent-api/**'
+      - '.github/workflows/agent-api-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+      - name: Testes automatizados (somente dados fictícios)
+        run: npm test
