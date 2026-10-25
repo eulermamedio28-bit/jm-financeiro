@@ -17,6 +17,8 @@ const summary=()=>({source:'fictional-demo',currency:'BRL',income_cents:285000,e
 const tool={name:'consultar_resumo_ficticio',description:'Consulta somente valores fictícios do JM Financeiro, sem acesso a dados reais.',inputSchema:{type:'object',properties:{},additionalProperties:false}};
 const monthlyTool={name:'consultar_mes_ficticio',description:'Consulta demonstrativa de receitas, despesas e saldo de outubro de 2026, sem dados reais.',inputSchema:{type:'object',properties:{mes:{type:'string',enum:['2026-10']}},required:['mes'],additionalProperties:false}};
 const monthly=()=>({source:'fictional-demo',month:'2026-10',currency:'BRL',income_cents:285000,expense_cents:174000,balance_cents:111000,notice:'Exemplo fictício. Não representa movimentações do JM.'});
+const categoryTool={name:'consultar_categorias_ficticias',description:'Detalhamento exclusivamente fictício das receitas e despesas de outubro de 2026 por categoria, somente leitura.',inputSchema:{type:'object',properties:{mes:{type:'string',enum:['2026-10']}},required:['mes'],additionalProperties:false}};
+const categories=()=>({source:'fictional-demo',month:'2026-10',currency:'BRL',income:[{category:'Marmitas',amount_cents:200000},{category:'Bebidas',amount_cents:55000},{category:'Sobremesas',amount_cents:30000}],expenses:[{category:'Ingredientes',amount_cents:100000},{category:'Embalagens',amount_cents:32000},{category:'Despesas operacionais',amount_cents:42000}],income_cents:285000,expense_cents:174000,balance_cents:111000,notice:'Categorias e valores inventados para demonstração. Não são dados do restaurante.'});
 const rpcError=(res,id,code,message)=>json(res,200,{jsonrpc:'2.0',id,error:{code,message}});
 async function mcp(req,res){
  if(!validOrigin(req))return json(res,403,{error:'Origem não permitida'});
@@ -35,12 +37,12 @@ async function mcp(req,res){
    const name=msg.params?.name,args=msg.params?.arguments;
    if(name===tool.name&&args!==undefined&&(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).length!==0))
     return rpcError(res,msg.id??null,-32602,'Argumentos inválidos para consulta fictícia');
-   if(name===monthlyTool.name&&(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).length!==1||args.mes!=='2026-10'))
+   if([monthlyTool.name,categoryTool.name].includes(name)&&(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).length!==1||args.mes!=='2026-10'))
     return rpcError(res,msg.id??null,-32602,'Mês inválido; demonstração disponível somente para 2026-10');
   }
   const result=msg.method==='initialize'?{protocolVersion:'2025-03-26',capabilities:{tools:{}},serverInfo:{name:'jm-financeiro-demo',version:'0.2.0'}}:
-   msg.method==='tools/list'?{tools:[tool,monthlyTool]}:
-   msg.method==='tools/call'&&[tool.name,monthlyTool.name].includes(msg.params?.name)?{content:[{type:'text',text:JSON.stringify(msg.params.name===tool.name?summary():monthly())}],isError:false}:null;
+   msg.method==='tools/list'?{tools:[tool,monthlyTool,categoryTool]}:
+   msg.method==='tools/call'&&[tool.name,monthlyTool.name,categoryTool.name].includes(msg.params?.name)?{content:[{type:'text',text:JSON.stringify(msg.params.name===tool.name?summary():msg.params.name===monthlyTool.name?monthly():categories())}],isError:false}:null;
   if(msg.id===undefined)return accepted(res);
   return json(res,200,result?{jsonrpc:'2.0',id:msg.id,result}:{jsonrpc:'2.0',id:msg.id,error:{code:-32601,message:'Método ou ferramenta não disponível'}});
  }catch{return json(res,400,{error:'Requisição inválida'});}
