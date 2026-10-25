@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test server.test.js",
+    "test": "node --test server.test.js mcp-client-flow.test.js",
     "test:live": "node --test live.test.js"
   }
 }
