@@ -92,6 +92,9 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const insufficient=await request('/transfers','POST',{...transferBody,amount_cents:999999},'test-transfer-over-0001');
   assert.equal(insufficient.status,400);
   assert.equal((await request('/transfers')).data.length,1);
+  const balancesAfterRejection=(await request('/account-balances')).data;
+  assert.deepEqual(balancesAfterRejection,balances,'Operação rejeitada não pode alterar os saldos');
+  assert.deepEqual((await request('/summary')).data,afterTransfer,'Operação rejeitada não pode alterar o consolidado');
   assert.equal((await request('/audit')).data.length,5);
  } finally {
   if(child.exitCode===null && child.signalCode===null) {
