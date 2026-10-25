@@ -58,7 +58,10 @@ const server=http.createServer(async(req,res)=>{
     const body=JSON.parse(raw);
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw Error('Objeto JSON obrigatório');
     const fingerprint=crypto.createHash('sha256').update(route+'\n'+JSON.stringify(body)).digest('hex');
-    const result=db.transaction(()=>{
+    db.exec('BEGIN IMMEDIATE');
+    let result;
+    try {
+      result=(()=>{
       const previous=db.prepare('SELECT fingerprint,response_json FROM request_log WHERE key=?').get(key);
       if(previous){
         if(previous.fingerprint!==fingerprint) throw Error('Chave de idempotência reutilizada para outra operação');
@@ -69,6 +72,8 @@ const server=http.createServer(async(req,res)=>{
       db.prepare('INSERT INTO request_log VALUES (?,?,?)').run(key,fingerprint,JSON.stringify(value));
       return value;
     })();
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
     return json(res,200,result);
   }catch(e){return json(res,400,{error:'Requisição inválida'});}
 });
