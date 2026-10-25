@@ -2,6 +2,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { createPilotAuth } from './pilot-auth.js';
 
 const db = new DatabaseSync(process.env.JM_DB_PATH || './jm-dev.sqlite');
 db.exec('PRAGMA journal_mode = WAL');
@@ -16,7 +17,9 @@ CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY, action TEXT NOT NULL, reco
 db.exec('PRAGMA foreign_keys = ON');
 const token = process.env.JM_API_TOKEN;
 if (!token || token.length < 32) throw new Error('Configure JM_API_TOKEN com pelo menos 32 caracteres aleatórios');
-const actor = 'ambiente-dev';
+const passwordHash=process.env.JM_PILOT_PASSWORD_HASH;
+if(!passwordHash) throw new Error('Configure JM_PILOT_PASSWORD_HASH para testes locais');
+const auth=createPilotAuth({passwordHash});
 const pilotSession = process.env.JM_PILOT_SESSION;
 if (!pilotSession || pilotSession.length < 32) throw new Error('Configure JM_PILOT_SESSION com pelo menos 32 caracteres aleatórios');
 const validSession = req => safeEqual(req.headers['x-jm-pilot-session'] || '',pilotSession);
@@ -73,6 +76,20 @@ const server=http.createServer(async(req,res)=>{
   if(hasForbiddenOrigin(req)) return json(res,403,{error:'Origem não autorizada'});
   if(!safeEqual(req.headers.authorization||'', 'Bearer '+token) || !validSession(req)) return json(res,401,{error:'Não autorizado'});
   const route=req.method+' '+new URL(req.url,'http://localhost').pathname;
+  if(route==='POST /auth/login'){
+    let raw='';
+    try{
+      for await(const chunk of req){raw+=chunk;if(raw.length>2048) throw Error('Corpo muito grande');}
+      const body=JSON.parse(raw);
+      const session=auth.login(body?.username,body?.password);
+      return session?json(res,200,session):json(res,401,{error:'Credenciais inválidas'});
+    }catch{return json(res,400,{error:'Requisição inválida'});}
+  }
+  const sessionToken=req.headers['x-jm-user-session'];
+  const identity=auth.authenticate(sessionToken);
+  if(!identity) return json(res,401,{error:'Sessão individual inválida ou expirada'});
+  if(route==='POST /auth/logout'){auth.logout(sessionToken);return json(res,200,{ok:true});}
+  if(route==='GET /auth/me') return json(res,200,{username:identity.username});
   if(!handlers[route]) return json(res,404,{error:'Rota inexistente'});
   if(req.method==='GET') return json(res,200,handlers[route]());
   const key=req.headers['idempotency-key'];
@@ -93,7 +110,7 @@ const server=http.createServer(async(req,res)=>{
         return JSON.parse(previous.response_json);
       }
       const value=handlers[route](body);
-      db.prepare('INSERT INTO audit VALUES (?,?,?,?,?)').run(id(),route,value.id,actor,now());
+      db.prepare('INSERT INTO audit VALUES (?,?,?,?,?)').run(id(),route,value.id,identity.username,now());
       db.prepare('INSERT INTO request_log VALUES (?,?,?)').run(key,fingerprint,JSON.stringify(value));
       return value;
     })();
