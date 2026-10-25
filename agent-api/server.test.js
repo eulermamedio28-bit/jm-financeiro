@@ -35,7 +35,7 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   let ready=false;
   for(let i=0;i<50;i++){
    if(child.exitCode!==null) throw Error('Servidor encerrou: '+output);
-   try {const r=await request('/health');if(r.status===200){ready=true;break;}}catch{}
+   try {const r=await request('/health');if(r.status===401){ready=true;break;}}catch{}
    await sleep(100);
   }
   assert.ok(ready,'Servidor não iniciou: '+output);
