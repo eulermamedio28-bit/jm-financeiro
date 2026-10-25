@@ -61,7 +61,13 @@ test('MCP oferece somente consulta fictícia e rejeita ferramenta desconhecida',
   assert.ok(ready);
   const call=async(method,params)=>fetch('http://127.0.0.1:'+port+'/mcp',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
   const list=await (await call('tools/list',{})).json();
-  assert.deepEqual(list.result.tools.map(x=>x.name),['consultar_resumo_ficticio']);
+  assert.deepEqual(list.result.tools.map(x=>x.name),['consultar_resumo_ficticio','consultar_mes_ficticio']);
+  const month=await (await call('tools/call',{name:'consultar_mes_ficticio',arguments:{mes:'2026-10'}})).json();
+  assert.equal(JSON.parse(month.result.content[0].text).balance_cents,111000);
+  const invalidMonth=await (await call('tools/call',{name:'consultar_mes_ficticio',arguments:{mes:'2026-11'}})).json();
+  assert.equal(invalidMonth.error.code,-32602);
+  const missingMonth=await (await call('tools/call',{name:'consultar_mes_ficticio',arguments:{}})).json();
+  assert.equal(missingMonth.error.code,-32602);
   const good=await (await call('tools/call',{name:'consultar_resumo_ficticio',arguments:{}})).json();
   assert.equal(JSON.parse(good.result.content[0].text).source,'fictional-demo');
   const extra=await (await call('tools/call',{name:'consultar_resumo_ficticio',arguments:{conta:'real'}})).json();
