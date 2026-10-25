@@ -5,15 +5,18 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { hashPassword } from './pilot-auth.js';
 
 const dir=mkdtempSync(join(tmpdir(),'jm-api-'));
 const token='test-token-'.padEnd(40,'x');
 const pilotSession='test-session-'.padEnd(40,'y');
+const password='senha-ficticia-para-testes-123';
+let userSession='';
 const port=20000+Math.floor(Math.random()*30000);
 const base='http://127.0.0.1:'+port;
 const child=spawn(process.execPath,['server.js'],{
  cwd:new URL('.',import.meta.url).pathname,
- env:{...process.env,JM_API_TOKEN:token,JM_PILOT_SESSION:pilotSession,JM_ALLOWED_ORIGIN:'http://localhost:4321',JM_DB_PATH:join(dir,'test.sqlite'),PORT:String(port)},
+ env:{...process.env,JM_API_TOKEN:token,JM_PILOT_SESSION:pilotSession,JM_PILOT_PASSWORD_HASH:hashPassword(password),JM_ALLOWED_ORIGIN:'http://localhost:4321',JM_DB_PATH:join(dir,'test.sqlite'),PORT:String(port)},
  stdio:['ignore','pipe','pipe']
 });
 let output='';
@@ -21,6 +24,7 @@ child.stdout.on('data',d=>output+=d);
 child.stderr.on('data',d=>output+=d);
 async function request(path,method='GET',body, key){
  const headers={authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession};
+ if(userSession) headers['x-jm-user-session']=userSession;
  if(body!==undefined) headers['content-type']='application/json';
  if(key) headers['idempotency-key']=key;
  const res=await fetch(base+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
@@ -35,6 +39,13 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
    await sleep(100);
   }
   assert.ok(ready,'Servidor não iniciou: '+output);
+  assert.equal((await request('/accounts')).status,401,'Sem sessão individual não deve acessar dados');
+  assert.equal((await request('/auth/login','POST',{username:'silvia',password})).status,401);
+  assert.equal((await request('/auth/login','POST',{username:'euler',password:'senha-errada'})).status,401);
+  const login=await request('/auth/login','POST',{username:'euler',password});
+  assert.equal(login.status,200);
+  userSession=login.data.token;
+  assert.deepEqual((await request('/auth/me')).data,{username:'euler'});
   const noAuth=await fetch(base+'/accounts');
   assert.equal(noAuth.status,401);
   const missingSession=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token}});
@@ -43,7 +54,7 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal(wrongSession.status,401);
   const untrustedOrigin=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession,origin:'https://exemplo-invalido.test'}});
   assert.equal(untrustedOrigin.status,403);
-  const trustedOrigin=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession,origin:'http://localhost:4321'}});
+  const trustedOrigin=await fetch(base+'/accounts',{headers:{authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession,origin:'http://localhost:4321','x-jm-user-session':userSession}});
   assert.equal(trustedOrigin.status,200);
   const untrustedWrite=await fetch(base+'/accounts',{method:'POST',headers:{authorization:'Bearer '+token,'x-jm-pilot-session':pilotSession,origin:'https://exemplo-invalido.test','idempotency-key':'origin-denied-0001','content-type':'application/json'},body:JSON.stringify({name:'Conta não autorizada'})});
   assert.equal(untrustedWrite.status,403);
@@ -107,7 +118,14 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const balancesAfterRejection=(await request('/account-balances')).data;
   assert.deepEqual(balancesAfterRejection,balances,'Operação rejeitada não pode alterar os saldos');
   assert.deepEqual((await request('/summary')).data,afterTransfer,'Operação rejeitada não pode alterar o consolidado');
-  assert.equal((await request('/audit')).data.length,5);
+  const audit=(await request('/audit')).data;
+  assert.equal(audit.length,5);
+  assert.ok(audit.every(x=>x.actor==='euler'));
+  const logout=await request('/auth/logout','POST');
+  assert.equal(logout.status,200);
+  assert.equal((await request('/entries')).status,401);
+  assert.equal((await request('/summary')).status,401);
+  assert.equal((await request('/transfers','POST',transferBody,'test-after-logout-0001')).status,401);
  } finally {
   if(child.exitCode===null && child.signalCode===null) {
    const exited=new Promise(resolve=>child.once('exit',resolve));
