@@ -27,3 +27,11 @@ Exemplo de lançamento fictício: `POST /entries` com `{"kind":"expense","accoun
 ## Origens de navegador
 
 Por padrão, requisições com cabeçalho `Origin` são rejeitadas. Em um ambiente local de testes, `JM_ALLOWED_ORIGIN` pode definir uma única origem explícita. Isso **não** constitui autenticação e não habilita acesso remoto: a API continua restrita a `127.0.0.1`. O cabeçalho `Origin` pode ser omitido por clientes não navegador; por isso, não substitui controles de acesso.
+
+## Módulo experimental de login individual (ainda não conectado à API)
+
+O arquivo `pilot-auth.js` prepara autenticação de **um único usuário de teste**, identificado como `euler`. A senha é verificada por `scrypt` com salt aleatório; o módulo gera sessões temporárias de 30 minutos, permite revogação e aplica bloqueio de cinco minutos após cinco erros consecutivos. O token de sessão é guardado somente como hash na memória do processo, sem persistência.
+
+Para executar apenas os testes locais do módulo: `node --test pilot-auth.test.js`. Não utilize senhas reais de Euler nem inclua hashes ou segredos no GitHub.
+
+**Limitação fundamental:** este módulo ainda não foi conectado às rotas HTTP do servidor, não oferece login no celular, HTTPS, recuperação de conta ou proteção de produção. As rotas da API continuam com as credenciais experimentais anteriores. Nenhum acesso real foi liberado.
