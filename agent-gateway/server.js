@@ -19,6 +19,13 @@ const monthlyTool={name:'consultar_mes_ficticio',description:'Consulta demonstra
 const monthly=()=>({source:'fictional-demo',month:'2026-10',currency:'BRL',income_cents:285000,expense_cents:174000,balance_cents:111000,notice:'Exemplo fictício. Não representa movimentações do JM.'});
 const categoryTool={name:'consultar_categorias_ficticias',description:'Detalhamento exclusivamente fictício das receitas e despesas de outubro de 2026 por categoria, somente leitura.',inputSchema:{type:'object',properties:{mes:{type:'string',enum:['2026-10']}},required:['mes'],additionalProperties:false}};
 const categories=()=>({source:'fictional-demo',month:'2026-10',currency:'BRL',income:[{category:'Marmitas',amount_cents:200000},{category:'Bebidas',amount_cents:55000},{category:'Sobremesas',amount_cents:30000}],expenses:[{category:'Ingredientes',amount_cents:100000},{category:'Embalagens',amount_cents:32000},{category:'Despesas operacionais',amount_cents:42000}],income_cents:285000,expense_cents:174000,balance_cents:111000,notice:'Categorias e valores inventados para demonstração. Não são dados do restaurante.'});
+const comparisonTool={name:'comparar_meses_ficticios',description:'Compara setembro e outubro de 2026 com valores inventados, sem acesso a dados financeiros reais.',inputSchema:{type:'object',properties:{mes_inicial:{type:'string',enum:['2026-09']},mes_final:{type:'string',enum:['2026-10']}},required:['mes_inicial','mes_final'],additionalProperties:false}};
+const comparison=()=>{
+ const previous={month:'2026-09',income_cents:250000,expense_cents:160000,balance_cents:90000};
+ const current={month:'2026-10',income_cents:285000,expense_cents:174000,balance_cents:111000};
+ const percent=(a,b)=>Math.round((b-a)/a*10000)/100;
+ return {source:'fictional-demo',currency:'BRL',previous,current,change_percent:{income:percent(previous.income_cents,current.income_cents),expenses:percent(previous.expense_cents,current.expense_cents),balance:percent(previous.balance_cents,current.balance_cents)},notice:'Comparativo integralmente fictício, sem conexão com contas ou lançamentos reais.'};
+};
 const rpcError=(res,id,code,message)=>json(res,200,{jsonrpc:'2.0',id,error:{code,message}});
 async function mcp(req,res){
  if(!validOrigin(req))return json(res,403,{error:'Origem não permitida'});
@@ -39,10 +46,12 @@ async function mcp(req,res){
     return rpcError(res,msg.id??null,-32602,'Argumentos inválidos para consulta fictícia');
    if([monthlyTool.name,categoryTool.name].includes(name)&&(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).length!==1||args.mes!=='2026-10'))
     return rpcError(res,msg.id??null,-32602,'Mês inválido; demonstração disponível somente para 2026-10');
+   if(name===comparisonTool.name&&(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).length!==2||args.mes_inicial!=='2026-09'||args.mes_final!=='2026-10'))
+    return rpcError(res,msg.id??null,-32602,'Comparativo fictício disponível apenas de 2026-09 para 2026-10');
   }
   const result=msg.method==='initialize'?{protocolVersion:'2025-03-26',capabilities:{tools:{}},serverInfo:{name:'jm-financeiro-demo',version:'0.2.0'}}:
-   msg.method==='tools/list'?{tools:[tool,monthlyTool,categoryTool]}:
-   msg.method==='tools/call'&&[tool.name,monthlyTool.name,categoryTool.name].includes(msg.params?.name)?{content:[{type:'text',text:JSON.stringify(msg.params.name===tool.name?summary():msg.params.name===monthlyTool.name?monthly():categories())}],isError:false}:null;
+   msg.method==='tools/list'?{tools:[tool,monthlyTool,categoryTool,comparisonTool]}:
+   msg.method==='tools/call'&&[tool.name,monthlyTool.name,categoryTool.name,comparisonTool.name].includes(msg.params?.name)?{content:[{type:'text',text:JSON.stringify(msg.params.name===tool.name?summary():msg.params.name===monthlyTool.name?monthly():msg.params.name===categoryTool.name?categories():comparison())}],isError:false}:null;
   if(msg.id===undefined)return accepted(res);
   return json(res,200,result?{jsonrpc:'2.0',id:msg.id,result}:{jsonrpc:'2.0',id:msg.id,error:{code:-32601,message:'Método ou ferramenta não disponível'}});
  }catch{return json(res,400,{error:'Requisição inválida'});}
