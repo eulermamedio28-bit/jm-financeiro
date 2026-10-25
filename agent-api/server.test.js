@@ -65,8 +65,10 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal(records[0].amount_cents,2500);
   assert.equal(records[0].kind,'expense');
  } finally {
-  if(child.exitCode===null) child.kill();
-  await new Promise(resolve=>child.once('exit',resolve));
+  if(child.exitCode===null && child.signalCode===null) {
+   child.kill();
+   await new Promise(resolve=>child.once('exit',resolve));
+  }
   rmSync(dir,{recursive:true,force:true});
  }
 });
