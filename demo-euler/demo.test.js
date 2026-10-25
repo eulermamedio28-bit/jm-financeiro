@@ -19,12 +19,13 @@ test('script embutido tem sintaxe válida',async()=>{
 });
 
 const login=readFileSync(join(import.meta.dirname,'login.html'),'utf8');
-test('prévia de login não coleta senhas nem faz requisições',()=>{
+test('interface de login conecta somente ao servidor local',()=>{
  assert.match(login,/Protótipo de interface/);
  assert.match(login,/Ambiente local de testes/);
  assert.match(login,/type="password"[^>]*required/);
- assert.match(login,/Entrar \(aguardando integração\)/);
- assert.doesNotMatch(login,/fetch\(|XMLHttpRequest|localStorage|sessionStorage/);
+ assert.match(login,/Entrar no piloto/);
+ assert.match(login,/fetch\('\/pilot\/login'/);
+ assert.doesNotMatch(login,/XMLHttpRequest|localStorage|sessionStorage/);
  assert.match(login,/name="viewport"/);
 });
 test('script da prévia de login tem sintaxe válida',async()=>{
