@@ -28,6 +28,11 @@ async function mcp(req,res){
   const msg=JSON.parse(data);
   if(!msg||msg.jsonrpc!=='2.0'||typeof msg.method!=='string')return json(res,400,{error:'JSON-RPC inválido'});
   if(msg.method==='notifications/initialized')return accepted(res);
+  if(msg.method==='tools/call'&&msg.params?.name===tool.name){
+   const args=msg.params.arguments;
+   if(args!==undefined&&(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).length!==0))
+    return json(res,200,{jsonrpc:'2.0',id:msg.id??null,error:{code:-32602,message:'Argumentos inválidos para consulta fictícia'}});
+  }
   const result=msg.method==='initialize'?{protocolVersion:'2025-03-26',capabilities:{tools:{}},serverInfo:{name:'jm-financeiro-demo',version:'0.2.0'}}:
    msg.method==='tools/list'?{tools:[tool]}:
    msg.method==='tools/call'&&msg.params?.name===tool.name?{content:[{type:'text',text:JSON.stringify(summary())}],isError:false}:null;
