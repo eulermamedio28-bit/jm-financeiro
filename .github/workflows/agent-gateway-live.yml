@@ -5,9 +5,19 @@ on:
     branches:
       - dev/agente-financeiro-1
     paths:
-      - 'agent-gateway/live.test.js'
+      - 'agent-gateway/**'
       - '.github/workflows/agent-gateway-live.yml'
 jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar servidor MCP local com credenciais fictícias
+        run: npm test
+        working-directory: agent-gateway
   external-smoke:
     runs-on: ubuntu-latest
     steps:
