@@ -9,13 +9,14 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, opening_cents INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS categories(id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE);
 CREATE TABLE IF NOT EXISTS entries(id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('expense','income')), account_id TEXT NOT NULL REFERENCES accounts(id), category_id TEXT NOT NULL REFERENCES categories(id), description TEXT NOT NULL, amount_cents INTEGER NOT NULL CHECK(amount_cents > 0), created_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS request_log(key TEXT PRIMARY KEY, response_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS request_log(key TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, response_json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY, action TEXT NOT NULL, record_id TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL);
 `);
 db.pragma('foreign_keys = ON');
 const token = process.env.JM_API_TOKEN;
 if (!token || token.length < 32) throw new Error('Configure JM_API_TOKEN com pelo menos 32 caracteres aleatórios');
 const actor = 'ambiente-dev';
+if (process.env.NODE_ENV === 'production') throw new Error('API experimental não pode iniciar em produção');
 const json = (res, status, data) => {res.writeHead(status, {'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(data));};
 const id = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -55,16 +56,21 @@ const server=http.createServer(async(req,res)=>{
   try {
     for await(const chunk of req){raw+=chunk;if(raw.length>16384) throw Error('Corpo muito grande');}
     const body=JSON.parse(raw);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw Error('Objeto JSON obrigatório');
+    const fingerprint=crypto.createHash('sha256').update(route+'\n'+JSON.stringify(body)).digest('hex');
     const result=db.transaction(()=>{
-      const previous=db.prepare('SELECT response_json FROM request_log WHERE key=?').get(key);
-      if(previous) return JSON.parse(previous.response_json);
+      const previous=db.prepare('SELECT fingerprint,response_json FROM request_log WHERE key=?').get(key);
+      if(previous){
+        if(previous.fingerprint!==fingerprint) throw Error('Chave de idempotência reutilizada para outra operação');
+        return JSON.parse(previous.response_json);
+      }
       const value=handlers[route](body);
       db.prepare('INSERT INTO audit VALUES (?,?,?,?,?)').run(id(),route,value.id,actor,now());
-      db.prepare('INSERT INTO request_log VALUES (?,?)').run(key,JSON.stringify(value));
+      db.prepare('INSERT INTO request_log VALUES (?,?,?)').run(key,fingerprint,JSON.stringify(value));
       return value;
     })();
     return json(res,200,result);
-  }catch(e){return json(res,400,{error:'Requisição inválida',detail:e.message});}
+  }catch(e){return json(res,400,{error:'Requisição inválida'});}
 });
 const port=Number(process.env.PORT||8787);
 server.listen(port,'127.0.0.1',()=>console.log('API de desenvolvimento local iniciada na porta '+port));
