@@ -142,6 +142,16 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const balancesAfterRejection=(await request('/account-balances')).data;
   assert.deepEqual(balancesAfterRejection,balances,'Operação rejeitada não pode alterar os saldos');
   assert.deepEqual((await request('/summary')).data,afterTransfer,'Operação rejeitada não pode alterar o consolidado');
+  // Persistência: o banco SQLite deve permanecer consistente ao reabrir em outro processo.
+  const { DatabaseSync } = await import('node:sqlite');
+  const reopened=new DatabaseSync(join(dir,'test.sqlite'),{readOnly:true});
+  try {
+    const persistedEntries=reopened.prepare('SELECT kind, amount_cents FROM entries ORDER BY created_at').all();
+    assert.equal(persistedEntries.length,2,'Lançamentos devem persistir no banco');
+    assert.equal(persistedEntries.reduce((sum,x)=>sum+(x.kind==='income'?x.amount_cents:-x.amount_cents),0),10000);
+    assert.equal(reopened.prepare('SELECT COUNT(*) AS count FROM transfers').get().count,1);
+    assert.equal(reopened.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
+  } finally { reopened.close(); }
   const audit=(await request('/audit')).data;
   assert.equal(audit.length,6);
   assert.ok(audit.every(x=>x.actor==='euler'));
