@@ -7,5 +7,8 @@
   },
   "scripts": {
     "test": "node --test"
+  },
+  "devDependencies": {
+    "pg": "^8.13.3"
   }
 }
