@@ -90,10 +90,11 @@ async function oauth(req,res,path,url){
   const dest=new URL(redirect);dest.searchParams.set('code',code);if(state)dest.searchParams.set('state',state);res.writeHead(302,{location:dest.toString(),'cache-control':'no-store'});return res.end();
  }
  if(req.method==='POST'&&path==='/oauth/token'){
+  console.info('[oauth] token exchange requested');
   try{const p=await readForm(req);const code=p.get('code')||'';const record=codes.get(code);codes.delete(code);
    const verifier=p.get('code_verifier')||'';
-   if(p.get('grant_type')!=='authorization_code'||!record||record.exp<Date.now()||record.client_id!==p.get('client_id')||record.redirect!==p.get('redirect_uri')||!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)||!secureEq(b64(crypto.createHash('sha256').update(verifier).digest()),record.challenge))return json(res,400,{error:'invalid_grant'});
-   return json(res,200,{access_token:oauthToken(),token_type:'Bearer',expires_in:3600,scope:'jm:demo:read'});
+   if(p.get('grant_type')!=='authorization_code'||!record||record.exp<Date.now()||record.client_id!==p.get('client_id')||record.redirect!==p.get('redirect_uri')||!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)||!secureEq(b64(crypto.createHash('sha256').update(verifier).digest()),record.challenge)){console.warn('[oauth] token exchange rejected');return json(res,400,{error:'invalid_grant'});}
+   console.info('[oauth] token exchange accepted');return json(res,200,{access_token:oauthToken(),token_type:'Bearer',expires_in:3600,scope:'jm:demo:read'});
   }catch{return json(res,400,{error:'invalid_request'});}
  }
  return json(res,404,{error:'Rota OAuth indisponível'});
