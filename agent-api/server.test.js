@@ -109,6 +109,11 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const summary=await request('/summary');
   assert.equal(summary.status,200);
   assert.deepEqual(summary.data,{income_cents:0,expense_cents:2500,opening_cents:10000,balance_cents:7500});
+  const incomeBody={kind:'income',account_id:account.data.id,category_id:category.data.id,description:'Receita fictícia',amount_cents:12500};
+  const income=await request('/entries','POST',incomeBody,'test-income-0001');
+  assert.equal(income.status,200);
+  assert.deepEqual((await request('/entries','POST',incomeBody,'test-income-0001')).data,income.data,'Receita repetida não deve duplicar');
+  assert.deepEqual((await request('/summary')).data,{income_cents:12500,expense_cents:2500,opening_cents:10000,balance_cents:20000});
   const second=await request('/accounts','POST',{name:'Banco',opening_cents:0},'test-account-0002');
   assert.equal(second.status,200);
   const transferBody={from_account_id:account.data.id,to_account_id:second.data.id,amount_cents:3000,description:'Transferência fictícia'};
@@ -118,11 +123,11 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.deepEqual(duplicateTransfer.data,transfer.data);
   assert.equal((await request('/transfers')).data.length,1);
   const balances=(await request('/account-balances')).data;
-  assert.equal(balances.find(x=>x.id===account.data.id).balance_cents,4500);
+  assert.equal(balances.find(x=>x.id===account.data.id).balance_cents,17000);
   assert.equal(balances.find(x=>x.id===second.data.id).balance_cents,3000);
   const afterTransfer=(await request('/summary')).data;
-  assert.equal(afterTransfer.balance_cents,7500,'Transferência não muda saldo consolidado');
-  assert.equal(afterTransfer.income_cents,0,'Transferência não é receita');
+  assert.equal(afterTransfer.balance_cents,20000,'Transferência não muda saldo consolidado');
+  assert.equal(afterTransfer.income_cents,12500,'Transferência não é receita');
   assert.equal(afterTransfer.expense_cents,2500,'Transferência não é despesa');
   const sameAccount=await request('/transfers','POST',{...transferBody,to_account_id:account.data.id},'test-transfer-same-0001');
   assert.equal(sameAccount.status,400);
@@ -138,7 +143,7 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.deepEqual(balancesAfterRejection,balances,'Operação rejeitada não pode alterar os saldos');
   assert.deepEqual((await request('/summary')).data,afterTransfer,'Operação rejeitada não pode alterar o consolidado');
   const audit=(await request('/audit')).data;
-  assert.equal(audit.length,5);
+  assert.equal(audit.length,6);
   assert.ok(audit.every(x=>x.actor==='euler'));
   const logout=await request('/auth/logout','POST');
   assert.equal(logout.status,200);
