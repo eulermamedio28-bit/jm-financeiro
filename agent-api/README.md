@@ -1,6 +1,6 @@
 # JM Financeiro — API experimental (não publicada)
 
-Esta primeira etapa cria uma API **local**, separada do aplicativo em produção. Não há sincronização, MCP, autenticação individual ou implantação na nuvem ainda. **Não utilizar dados reais.**
+Esta primeira etapa cria uma API **local**, separada do aplicativo em produção. Não há sincronização com o aplicativo, MCP de dados reais ou implantação desta API na nuvem. Existe login individual experimental, exclusivamente para Euler. **Não utilizar dados reais.**
 
 ## Executar em computador de desenvolvimento
 
@@ -23,7 +23,7 @@ Transferências internas movimentam valores entre contas, mas **não** entram co
 
 Exemplo de lançamento fictício: `POST /entries` com `{"kind":"expense","account_id":"UUID","category_id":"UUID","description":"Despesa teste","amount_cents":2500}`.
 
-**Limitações importantes:** token único de desenvolvimento; sem HTTPS; sem contas de usuários, confirmação, backup remoto, controle de acesso individual ou sincronização PWA. Não expor à internet. Há testes automatizados configurados, mas sua aprovação na execução contínua ainda precisa ser verificada. Antes de conectar ao aplicativo ou MCP, faltam autenticação individual, HTTPS, backups, regras de autorização e validação de segurança.
+**Limitações importantes:** token único de desenvolvimento; sem HTTPS; sem contas de usuários, confirmação, backup remoto, controle de acesso individual ou sincronização PWA. Não expor à internet. Há testes automatizados no GitHub Actions para autenticação, lançamentos, transferências e backup local. Antes de conectar ao aplicativo ou MCP, faltam autenticação individual, HTTPS, backups, regras de autorização e validação de segurança.
 
 ## Origens de navegador
 
@@ -58,3 +58,13 @@ Rotas web: `GET /pilot`, `POST /pilot/login`, `GET /pilot/me`, `GET /pilot/summa
 `read(nome)` executa consultas autenticadas. Para escritas, `prepareWrite(nome, dados)` **não envia requisição** e devolve um resumo e uma chave de operação. Somente `executeApproved(prepared, {confirmed:true,operationKey:prepared.idempotencyKey,summary:prepared.summary})` envia a escrita. A aprovação deve ser obtida de Euler em interação separada; **nunca gerar aprovação automaticamente**. O adaptador não substitui uma camada de autorização confiável no servidor; sua verificação de confirmação é somente uma proteção do fluxo de desenvolvimento.
 
 Testes automatizados verificam que escritas sem aprovação são bloqueadas e que destinos externos são recusados. Falta hospedar serviço privado HTTPS, autenticação de serviço, autorização server-side por operação, integração real com o aplicativo e plugin privado. Não inserir segredos no GitHub.
+
+## Política de acesso inicial — somente Euler
+
+O único usuário autorizado nesta etapa é `euler`. Não criar credenciais ou permissões para Silvia agora. A inclusão de outro usuário será uma evolução futura, com autorização explícita. O módulo `pilot-auth.js` rejeita qualquer nome diferente de `euler`. Nenhuma senha real deve ser armazenada no repositório.
+
+## Backup e restauração — desenvolvimento local
+
+Com o servidor parado para restauração, use `node backup.js backup ./jm-dev.sqlite ./backups/copia.sqlite` para criar um snapshot consistente, inclusive quando o banco utiliza WAL. Para recuperar, use `node backup.js restore ./backups/copia.sqlite ./jm-restaurado.sqlite`. O destino da restauração deve estar ausente; o programa se recusa a sobrescrever um banco existente. Os dois comandos verificam a integridade SQLite. Os testes em `backup.test.js` validam a cópia e a recuperação com valores fictícios.
+
+**Atenção:** o backup é manual e local. Ainda não há criptografia, retenção, backup remoto, testes de recuperação de desastres ou operação de produção. Os arquivos `.sqlite` e backups financeiros jamais devem ser publicados no GitHub.
