@@ -34,4 +34,25 @@ const server=http.createServer(async(req,res)=>{
  return send(res,200,{jsonrpc:'2.0',id:msg.id,result});
  }catch{return send(res,400,{error:'invalid_request'});}
 });
-server.listen(port,'0.0.0.0',()=>console.log('JM Financeiro MCP v2 fictional demo ready'));
+server.listen(port,'0.0.0.0',async()=>{
+ console.log('JM Financeiro MCP v2 fictional demo ready');
+ try{
+  const invoke=async(method,params={})=>{
+   const res=await fetch('http://127.0.0.1:'+port+'/mcp',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
+   const data=await res.json();
+   if(res.status!==200||data.error||!data.result)throw Error(method+' failed');
+   return data.result;
+  };
+  const init=await invoke('initialize',{protocolVersion:'2025-03-26',capabilities:{},clientInfo:{name:'selftest',version:'1'}});
+  if(init.serverInfo?.name!=='jm-financeiro-mcp-v2')throw Error('initialize mismatch');
+  const list=await invoke('tools/list');
+  if(list.tools?.length!==4)throw Error('tools/list mismatch');
+  for(const [name,args] of [['consultar_resumo_ficticio',{}],['consultar_mes_ficticio',{mes:'2026-10'}],['consultar_categorias_ficticias',{mes:'2026-10'}],['comparar_meses_ficticios',{mes_inicial:'2026-09',mes_final:'2026-10'}]]){
+   const result=await invoke('tools/call',{name,arguments:args});
+   const payload=JSON.parse(result.content?.[0]?.text||'null');
+   if(payload?.source!=='fictional-demo')throw Error(name+' invalid payload');
+   console.log('[mcp-selftest] PASS '+name);
+  }
+  console.log('[mcp-selftest] PASS initialize, tools/list, four tools/call');
+ }catch(err){console.error('[mcp-selftest] FAIL',err.message);process.exitCode=1;}
+});
