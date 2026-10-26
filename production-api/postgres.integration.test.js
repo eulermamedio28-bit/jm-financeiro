@@ -12,6 +12,7 @@ test('PostgreSQL real: migração, lançamento e idempotência', async t => {
  const category='33333333-3333-4333-8333-333333333333';
  try {
   await pool.query(readFileSync(new URL('./migrations/001_initial.sql',import.meta.url),'utf8'));
+  await pool.query(readFileSync(new URL('./migrations/002_auth.sql',import.meta.url),'utf8'));
   await pool.query('INSERT INTO establishments(id,name) VALUES($1,$2)',[establishment,'Teste isolado']);
   await pool.query('INSERT INTO accounts(id,establishment_id,name,opening_cents) VALUES($1,$2,$3,$4)',[account,establishment,'Caixa',100000]);
   await pool.query('INSERT INTO categories(id,establishment_id,name) VALUES($1,$2,$3)',[category,establishment,'Vendas']);
