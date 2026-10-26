@@ -18,7 +18,7 @@ test('backup local preserva registros, restaura e impede sobrescrita',()=>{
   db.exec('INSERT INTO lancamentos VALUES (67890)');
   assert.equal(run('restore',backup,restored).status,0);
   const check=new DatabaseSync(restored,{readOnly:true});
-  try { assert.deepEqual(check.prepare('SELECT valor_cents FROM lancamentos').all(),[{valor_cents:12345}]); }
+  try { assert.deepEqual(check.prepare('SELECT valor_cents FROM lancamentos').all().map(row=>Number(row.valor_cents)),[12345]); }
   finally {check.close();}
   assert.notEqual(run('restore',backup,restored).status,0,'Não sobrescrever banco existente');
   db.close();
