@@ -9,6 +9,22 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jm_test
+          POSTGRES_PASSWORD: jm_test_password
+          POSTGRES_DB: jm_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jm_test -d jm_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      JM_TEST_DATABASE_URL: postgres://jm_test:jm_test_password@localhost:5432/jm_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,6 +32,9 @@ jobs:
           node-version: '22'
       - name: Verify source
         run: node --check production-api/ledger.js
-      - name: Test financial domain
+      - name: Install test dependencies
+        working-directory: production-api
+        run: npm install --no-audit --no-fund
+      - name: Test financial domain and isolated PostgreSQL
         working-directory: production-api
         run: npm test
