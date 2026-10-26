@@ -50,6 +50,8 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   assert.equal(pilotPage.status,200);
   assert.match(await pilotPage.text(),/JM Financeiro/);
   assert.equal((await fetch(base+'/pilot/summary')).status,401,'Resumo sem cookie deve ser negado');
+  assert.equal((await fetch(base+'/pilot/accounts')).status,401,'Contas sem login devem ser negadas');
+  assert.equal((await fetch(base+'/pilot/entries')).status,401,'Lançamentos sem login devem ser negados');
   const pilotLogin=await fetch(base+'/pilot/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:'euler',password})});
   assert.equal(pilotLogin.status,200);
   const cookie=pilotLogin.headers.get('set-cookie');
@@ -59,6 +61,8 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const browserSummary=await fetch(base+'/pilot/summary',{headers:{cookie:browserCookie}});
   assert.equal(browserSummary.status,200);
   assert.equal((await browserSummary.json()).balance_cents,0);
+  assert.deepEqual(await (await fetch(base+'/pilot/accounts',{headers:{cookie:browserCookie}})).json(),[]);
+  assert.deepEqual(await (await fetch(base+'/pilot/entries',{headers:{cookie:browserCookie}})).json(),[]);
   const crossSite=await fetch(base+'/pilot/summary',{headers:{cookie:browserCookie,origin:'https://invasor.test'}});
   assert.equal(crossSite.status,403);
   const pilotLogout=await fetch(base+'/pilot/logout',{method:'POST',headers:{cookie:browserCookie}});
