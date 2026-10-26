@@ -111,6 +111,8 @@ const server=http.createServer(async(req,res)=>{
     if(!identity) return pilotJson(res,401,{error:'Sessão expirada ou inválida'});
     if(route==='GET /pilot/me') return pilotJson(res,200,{username:identity.username});
     if(route==='GET /pilot/summary') return pilotJson(res,200,handlers['GET /summary']());
+    if(route==='GET /pilot/accounts') return pilotJson(res,200,handlers['GET /account-balances']());
+    if(route==='GET /pilot/entries') return pilotJson(res,200,handlers['GET /entries']());
     if(route==='POST /pilot/logout'){auth.logout(sessionToken);return pilotJson(res,200,{ok:true},pilotCookie('',0));}
     return pilotJson(res,404,{error:'Rota inexistente'});
   }
