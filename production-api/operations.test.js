@@ -82,3 +82,26 @@ test('idempotent replay returns saved response without another insert', async ()
  assert.ok(calls.includes('COMMIT'));
  assert.ok(calls.includes('released'));
 });
+
+test('transfer checks source balance before inserting', async () => {
+ const calls = [];
+ const pool = {connect: async () => ({
+  query: async (sql) => {
+   calls.push(sql);
+   if (sql.startsWith('SELECT fingerprint')) return {rows:[]};
+   if (sql.includes('AS balance_cents')) return {rows:[{balance_cents:'1000'}]};
+   if (sql.startsWith('SELECT id FROM accounts')) return {rows:[{id:'source'}]};
+   return {rows:[]};
+  },
+  release: () => calls.push('released')
+ })};
+ const input = {
+  amount_cents: 5000, description: 'Caixa para banco',
+  establishment_id: '11111111-1111-4111-8111-111111111111',
+  from_account_id: '22222222-2222-4222-8222-222222222222',
+  to_account_id: '33333333-3333-4333-8333-333333333333'
+ };
+ await assert.rejects(recordOperation(pool,{kind:'transfer',input,idempotencyKey:'request_123456789',actor:'euler'}),/Saldo insuficiente/);
+ assert.ok(!calls.some(sql=>sql.startsWith('INSERT INTO transfers')));
+ assert.ok(calls.includes('ROLLBACK'));
+});
