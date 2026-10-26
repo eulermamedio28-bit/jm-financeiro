@@ -15,6 +15,7 @@ test('backup local preserva registros, restaura e impede sobrescrita',()=>{
   const run=(...args)=>spawnSync(process.execPath,['backup.js',...args],{cwd:new URL('.',import.meta.url).pathname,encoding:'utf8'});
   assert.equal(run('backup',original,backup).status,0);
   assert.ok(existsSync(backup));
+  assert.notEqual(run('backup',original,backup).status,0,'Backup existente não pode ser sobrescrito');
   db.exec('INSERT INTO lancamentos VALUES (67890)');
   assert.equal(run('restore',backup,restored).status,0);
   const check=new DatabaseSync(restored,{readOnly:true});
