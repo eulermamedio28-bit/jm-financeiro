@@ -1,7 +1,7 @@
 name: JM Agente - testes da API experimental
 on:
   push:
-    branches: [dev/agente-financeiro-1]
+    branches: [dev/agente-financeiro-1, dev/jm-financeiro-mcp-v2]
     paths:
       - 'agent-api/**'
       - 'demo-euler/**'
