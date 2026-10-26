@@ -44,7 +44,7 @@ const getClient=id=>{
 const b64=v=>Buffer.from(v).toString('base64url');
 const sign=data=>crypto.createHmac('sha256',oauthSecret).update(data).digest('base64url');
 const secureEq=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y);};
-const html=(res,status,body)=>{res.writeHead(status,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'referrer-policy':'no-referrer'});res.end(body);};
+const html=(res,status,body)=>{res.writeHead(status,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors https://chatgpt.com https://*.chatgpt.com",'referrer-policy':'no-referrer'});res.end(body);};
 const readForm=async req=>{let s='';for await(const c of req){s+=c;if(s.length>8192)throw Error('large');}return new URLSearchParams(s);};
 const readJson=async req=>{let s='';for await(const c of req){s+=c;if(s.length>8192)throw Error('large');}return JSON.parse(s);};
 const oauthToken=()=>{const payload=b64(JSON.stringify({aud:base+'/mcp',exp:Math.floor(Date.now()/1000)+3600,scope:'jm:demo:read'}));return payload+'.'+sign(payload);};
