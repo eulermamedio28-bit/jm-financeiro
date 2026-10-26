@@ -5,6 +5,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { createPilotAuth } from './pilot-auth.js';
 import { readFileSync } from 'node:fs';
 
+// Segurança: nunca inicializar banco ou endpoints experimentais em produção.
+if (process.env.NODE_ENV === 'production') throw new Error('API experimental não pode iniciar em produção');
 const db = new DatabaseSync(process.env.JM_DB_PATH || './jm-dev.sqlite');
 db.exec('PRAGMA journal_mode = WAL');
 db.exec(`
@@ -27,7 +29,6 @@ const validSession = req => safeEqual(req.headers['x-jm-pilot-session'] || '',pi
 const allowedOrigin = process.env.JM_ALLOWED_ORIGIN || '';
 const hasForbiddenOrigin = req => !!req.headers.origin && req.headers.origin !== allowedOrigin;
 
-if (process.env.NODE_ENV === 'production') throw new Error('API experimental não pode iniciar em produção');
 const json = (res, status, data) => {res.writeHead(status, {'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(data));};
 const id = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
