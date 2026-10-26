@@ -1,0 +1,21 @@
+name: Production API domain tests
+on:
+  push:
+    branches: [dev/jm-financeiro-mcp-v2]
+    paths:
+      - 'production-api/**'
+      - '.github/workflows/production-api-tests.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source
+        run: node --check production-api/ledger.js
+      - name: Test financial domain
+        working-directory: production-api
+        run: npm test
