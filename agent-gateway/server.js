@@ -21,8 +21,26 @@ const loginSecret=process.env.JM_OAUTH_LOGIN_SECRET||'';
 // Compatibilidade temporária com a variável cadastrada sem o prefixo JM_.
 const alternateLoginSecret=process.env.OAUTH_LOGIN_SECRET||'';
 const oauthReady=oauthSecret.length>=48&&(loginSecret.length>=24||alternateLoginSecret.length>=24);
-const clients=new Map();
+// Stateless dynamic client registrations survive free-tier restarts.
+const clients=new Map(); // temporary backward compatibility for already registered clients
 const codes=new Map();
+const registerClient=uris=>{
+ const payload=b64(JSON.stringify({redirect_uris:uris,created:Date.now()}));
+ return 'jm_'+payload+'.'+sign('client:'+payload);
+};
+const getClient=id=>{
+ if(typeof id!=='string'||id.length>4096)return null;
+ const legacy=clients.get(id);
+ if(legacy)return legacy;
+ if(!id.startsWith('jm_'))return null;
+ const [payload,mac,...extra]=id.slice(3).split('.');
+ if(!payload||!mac||extra.length||!secureEq(sign('client:'+payload),mac))return null;
+ try{
+  const data=JSON.parse(Buffer.from(payload,'base64url').toString('utf8'));
+  if(!Array.isArray(data.redirect_uris)||data.redirect_uris.length<1||data.redirect_uris.length>5||!data.redirect_uris.every(validRedirect)||!Number.isSafeInteger(data.created)||data.created>Date.now()+60000||data.created<Date.now()-30*86400000)return null;
+  return data;
+ }catch{return null;}
+};
 const b64=v=>Buffer.from(v).toString('base64url');
 const sign=data=>crypto.createHmac('sha256',oauthSecret).update(data).digest('base64url');
 const secureEq=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y);};
@@ -47,13 +65,13 @@ async function oauth(req,res,path,url){
  if(req.method==='GET'&&(path==='/.well-known/oauth-protected-resource'||path==='/.well-known/oauth-protected-resource/mcp'))return json(res,200,resourceMetadata);
  if(req.method==='POST'&&path==='/oauth/register'){
   try{const data=await readJson(req);if(!Array.isArray(data.redirect_uris)||data.redirect_uris.length<1||data.redirect_uris.length>5||!data.redirect_uris.every(validRedirect))return json(res,400,{error:'invalid_redirect_uri'});
-   const client_id=crypto.randomUUID();clients.set(client_id,{redirect_uris:data.redirect_uris,created:Date.now()});return json(res,201,{client_id,redirect_uris:data.redirect_uris,token_endpoint_auth_method:'none',grant_types:['authorization_code'],response_types:['code']});
+   const client_id=registerClient(data.redirect_uris);return json(res,201,{client_id,redirect_uris:data.redirect_uris,token_endpoint_auth_method:'none',grant_types:['authorization_code'],response_types:['code']});
   }catch{return json(res,400,{error:'invalid_client_metadata'});}
  }
  if(path==='/oauth/authorize'&&(req.method==='GET'||req.method==='POST')){
   let p=url.searchParams;
   if(req.method==='POST'){try{p=await readForm(req);}catch{return json(res,400,{error:'invalid_request'});}}
-  const client=clients.get(p.get('client_id'));
+  const client=getClient(p.get('client_id'));
   const redirect=p.get('redirect_uri');
   const challenge=p.get('code_challenge');
   const state=p.get('state')||'';
