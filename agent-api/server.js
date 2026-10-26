@@ -7,6 +7,13 @@ import { readFileSync } from 'node:fs';
 
 // Segurança: nunca inicializar banco ou endpoints experimentais em produção.
 if (process.env.NODE_ENV === 'production') throw new Error('API experimental não pode iniciar em produção');
+const token = process.env.JM_API_TOKEN;
+if (!token || token.length < 32) throw new Error('Configure JM_API_TOKEN com pelo menos 32 caracteres aleatórios');
+const passwordHash=process.env.JM_PILOT_PASSWORD_HASH;
+if(!passwordHash) throw new Error('Configure JM_PILOT_PASSWORD_HASH para testes locais');
+const auth=createPilotAuth({passwordHash});
+const pilotSession = process.env.JM_PILOT_SESSION;
+if (!pilotSession || pilotSession.length < 32) throw new Error('Configure JM_PILOT_SESSION com pelo menos 32 caracteres aleatórios');
 const db = new DatabaseSync(process.env.JM_DB_PATH || './jm-dev.sqlite');
 db.exec('PRAGMA journal_mode = WAL');
 db.exec(`
@@ -18,13 +25,6 @@ CREATE TABLE IF NOT EXISTS request_log(key TEXT PRIMARY KEY, fingerprint TEXT NO
 CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY, action TEXT NOT NULL, record_id TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL);
 `);
 db.exec('PRAGMA foreign_keys = ON');
-const token = process.env.JM_API_TOKEN;
-if (!token || token.length < 32) throw new Error('Configure JM_API_TOKEN com pelo menos 32 caracteres aleatórios');
-const passwordHash=process.env.JM_PILOT_PASSWORD_HASH;
-if(!passwordHash) throw new Error('Configure JM_PILOT_PASSWORD_HASH para testes locais');
-const auth=createPilotAuth({passwordHash});
-const pilotSession = process.env.JM_PILOT_SESSION;
-if (!pilotSession || pilotSession.length < 32) throw new Error('Configure JM_PILOT_SESSION com pelo menos 32 caracteres aleatórios');
 const validSession = req => safeEqual(req.headers['x-jm-pilot-session'] || '',pilotSession);
 const allowedOrigin = process.env.JM_ALLOWED_ORIGIN || '';
 const hasForbiddenOrigin = req => !!req.headers.origin && req.headers.origin !== allowedOrigin;
