@@ -66,7 +66,8 @@ test('idempotent replay returns saved response without another insert', async ()
   account_id: '22222222-2222-4222-8222-222222222222',
   category_id: '33333333-3333-4333-8333-333333333333'
  };
- const fingerprint = createHash('sha256').update(JSON.stringify({kind:'entry',data:input,actor:'euler'})).digest('hex');
+ const {validateEntry} = await import('./ledger.js');
+ const fingerprint = createHash('sha256').update(JSON.stringify({kind:'entry',data:validateEntry(input),actor:'euler'})).digest('hex');
  const calls = [];
  const pool = {connect: async () => ({
   query: async (sql) => {
