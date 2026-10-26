@@ -70,7 +70,7 @@ async function oauth(req,res,path,url){
  }
  if(path==='/oauth/authorize'&&(req.method==='GET'||req.method==='POST')){
   let p=url.searchParams;
-  if(req.method==='POST'){try{p=await readForm(req);}catch{return json(res,400,{error:'invalid_request'});}}
+  if(req.method==='POST'){console.info('[oauth] authorization form submitted');try{p=await readForm(req);}catch{console.warn('[oauth] form parse failed');return json(res,400,{error:'invalid_request'});}}
   const client=getClient(p.get('client_id'));
   const redirect=p.get('redirect_uri');
   const challenge=p.get('code_challenge');
@@ -85,7 +85,7 @@ async function oauth(req,res,path,url){
    const fields=['client_id','redirect_uri','response_type','code_challenge','code_challenge_method','state','scope'].map(k=>'<input type="hidden" name="'+k+'" value="'+String(p.get(k)||'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;')+'">').join('');
    return html(res,200,'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>JM Financeiro - Autorizar</title><body><h2>JM Financeiro - Testes</h2><p>Autorizar somente consultas fictícias, sem dados reais.</p><form method="post" action="/oauth/authorize">'+fields+'<label>Senha de autorização <input type="password" name="password" required autocomplete="off"></label><button type="submit">Autorizar</button></form></body></html>');
   }
-  if(![loginSecret,alternateLoginSecret].some(secret=>secret.length>=24&&secureEq(p.get('password')||'',secret)))return html(res,403,'Autorização recusada. Verifique a senha configurada no Render e tente iniciar uma nova conexão.');
+  if(![loginSecret,alternateLoginSecret].some(secret=>secret.length>=24&&secureEq(p.get('password')||'',secret))){console.warn('[oauth] authorization password rejected');return html(res,403,'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Senha incorreta</title><body><h2>Senha de autorização incorreta</h2><p>Volte ao ChatGPT e inicie uma nova conexão.</p></body></html>');}console.info('[oauth] authorization accepted');
   const code=crypto.randomBytes(32).toString('base64url');codes.set(code,{client_id:p.get('client_id'),redirect,challenge,exp:Date.now()+120000});
   const dest=new URL(redirect);dest.searchParams.set('code',code);if(state)dest.searchParams.set('state',state);res.writeHead(302,{location:dest.toString(),'cache-control':'no-store'});return res.end();
  }
