@@ -10,7 +10,7 @@ if (!['backup', 'restore'].includes(action) || !source || !target || resolve(sou
 }
 const from = resolve(source), to = resolve(target);
 if (!existsSync(from)) throw Error('Banco de origem não encontrado');
-if (action === 'restore' && existsSync(to)) throw Error('Restauração recusada: destino já existe');
+if (existsSync(to)) throw Error('Destino já existe: operação recusada para evitar sobrescrita');
 mkdirSync(dirname(to), { recursive: true });
 if (action === 'backup') {
   const db = new DatabaseSync(from, { readOnly: true });
