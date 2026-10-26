@@ -8,11 +8,12 @@ import {authenticatedRecordOperation,authenticatedSummary} from './secure-operat
 
 test('authenticated financial API: deny unauthenticated, write as Euler, revoke access',async t=>{
  if(!process.env.JM_TEST_DATABASE_URL) return t.skip('Temporary PostgreSQL not configured');
- const pool=new pg.Pool({connectionString:process.env.JM_TEST_DATABASE_URL});
+ const pool=new pg.Pool({connectionString:process.env.JM_TEST_DATABASE_URL,options:'-c search_path=secure_operations_test'});
  const establishment='11111111-1111-4111-8111-111111111111';
  const account='22222222-2222-4222-8222-222222222222';
  const category='33333333-3333-4333-8333-333333333333';
  try{
+  await pool.query('CREATE SCHEMA IF NOT EXISTS secure_operations_test');
   await pool.query(readFileSync(new URL('./migrations/001_initial.sql',import.meta.url),'utf8'));
   await pool.query(readFileSync(new URL('./migrations/002_auth.sql',import.meta.url),'utf8'));
   await pool.query('INSERT INTO auth_users(username,password_hash) VALUES($1,$2)',['euler',hashPassword('SenhaLongaDeTeste2026')]);
