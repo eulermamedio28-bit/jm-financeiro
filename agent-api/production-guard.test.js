@@ -19,3 +19,16 @@ test('API experimental nunca cria banco ou inicia em produção',()=>{
   assert.equal(existsSync(database),false,'Produção não deve criar banco experimental');
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
+
+test('API não cria banco quando faltam segredos de autenticação',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'jm-missing-secrets-'));
+ try{
+  const database=join(dir,'must-not-exist.sqlite');
+  const env={...process.env,NODE_ENV:'development',JM_DB_PATH:database};
+  delete env.JM_API_TOKEN;delete env.JM_PILOT_SESSION;delete env.JM_PILOT_PASSWORD_HASH;
+  const run=spawnSync(process.execPath,['server.js'],{cwd:new URL('.',import.meta.url).pathname,env,encoding:'utf8',timeout:10000});
+  assert.notEqual(run.status,0);
+  assert.match(run.stderr,/JM_API_TOKEN/);
+  assert.equal(existsSync(database),false);
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});
