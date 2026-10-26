@@ -68,6 +68,8 @@ test('API local: autenticação, cadastros, idempotência e auditoria',async()=>
   const pilotLogout=await fetch(base+'/pilot/logout',{method:'POST',headers:{cookie:browserCookie}});
   assert.equal(pilotLogout.status,200);
   assert.equal((await fetch(base+'/pilot/summary',{headers:{cookie:browserCookie}})).status,401);
+  assert.equal((await fetch(base+'/pilot/accounts',{headers:{cookie:browserCookie}})).status,401,'Contas devem bloquear sessão revogada');
+  assert.equal((await fetch(base+'/pilot/entries',{headers:{cookie:browserCookie}})).status,401,'Lançamentos devem bloquear sessão revogada');
 
   const noAuth=await fetch(base+'/accounts');
   assert.equal(noAuth.status,401);
