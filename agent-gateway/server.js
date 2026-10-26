@@ -86,12 +86,15 @@ async function oauth(req,res,path,url){
    return html(res,200,'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>JM Financeiro - Autorizar</title><body><h2>JM Financeiro - Testes</h2><p>Autorizar somente consultas fictícias, sem dados reais.</p><form method="post" action="/oauth/authorize">'+fields+'<label>Senha de autorização <input type="password" name="password" required autocomplete="off"></label><button type="submit">Autorizar</button></form></body></html>');
   }
   if(![loginSecret,alternateLoginSecret].some(secret=>secret.length>=24&&secureEq(p.get('password')||'',secret))){console.warn('[oauth] authorization password rejected');return html(res,403,'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Senha incorreta</title><body><h2>Senha de autorização incorreta</h2><p>Volte ao ChatGPT e inicie uma nova conexão.</p></body></html>');}console.info('[oauth] authorization accepted');
-  const code=crypto.randomBytes(32).toString('base64url');codes.set(code,{client_id:p.get('client_id'),redirect,challenge,exp:Date.now()+120000});
-  const dest=new URL(redirect);dest.searchParams.set('code',code);if(state)dest.searchParams.set('state',state);res.writeHead(302,{location:dest.toString(),'cache-control':'no-store'});return res.end();
+  const codePayload=b64(JSON.stringify({client_id:p.get('client_id'),redirect,challenge,exp:Date.now()+300000,nonce:crypto.randomBytes(16).toString('base64url')}));
+  const code='jmc_'+codePayload+'.'+sign('code:'+codePayload);
+  console.info('[oauth] redirect prepared; destination host:',new URL(redirect).hostname);
+  const dest=new URL(redirect);dest.searchParams.set('code',code);if(state)dest.searchParams.set('state',state);res.writeHead(303,{location:dest.toString(),'cache-control':'no-store'});return res.end();
  }
  if(req.method==='POST'&&path==='/oauth/token'){
   console.info('[oauth] token exchange requested');
-  try{const p=await readForm(req);const code=p.get('code')||'';const record=codes.get(code);codes.delete(code);
+  try{const p=await readForm(req);const code=p.get('code')||'';let record=codes.get(code);codes.delete(code);
+   if(!record&&code.startsWith('jmc_')){const [payload,mac,...extra]=code.slice(4).split('.');if(payload&&mac&&!extra.length&&secureEq(sign('code:'+payload),mac)){try{record=JSON.parse(Buffer.from(payload,'base64url').toString('utf8'));}catch{}}}
    const verifier=p.get('code_verifier')||'';
    if(p.get('grant_type')!=='authorization_code'||!record||record.exp<Date.now()||record.client_id!==p.get('client_id')||record.redirect!==p.get('redirect_uri')||!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)||!secureEq(b64(crypto.createHash('sha256').update(verifier).digest()),record.challenge)){console.warn('[oauth] token exchange rejected');return json(res,400,{error:'invalid_grant'});}
    console.info('[oauth] token exchange accepted');return json(res,200,{access_token:oauthToken(),token_type:'Bearer',expires_in:3600,scope:'jm:demo:read'});
