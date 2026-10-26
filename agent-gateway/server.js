@@ -75,7 +75,12 @@ async function oauth(req,res,path,url){
   const redirect=p.get('redirect_uri');
   const challenge=p.get('code_challenge');
   const state=p.get('state')||'';
-  if(!client||!client.redirect_uris.includes(redirect)||p.get('response_type')!=='code'||p.get('code_challenge_method')!=='S256'||!/^[A-Za-z0-9_-]{43}$/.test(challenge||'')||state.length>512||!['jm:demo:read',''].includes(p.get('scope')||''))return json(res,400,{error:'invalid_request'});
+  const reason=!client?'client_unrecognized':!client.redirect_uris.includes(redirect)?'redirect_mismatch':p.get('response_type')!=='code'?'response_type':p.get('code_challenge_method')!=='S256'?'pkce_method':!/^[A-Za-z0-9_-]{43}$/.test(challenge||'')?'pkce_challenge':state.length>4096?'state_length':!['jm:demo:read',''].includes(p.get('scope')||'')?'scope':'';
+  if(reason){
+   // Record only the failed validation category; never log URL, credentials, state, code, or client ID.
+   console.warn('[oauth] authorization rejected:',reason);
+   return json(res,400,{error:'invalid_request'});
+  }
   if(req.method==='GET'){
    const fields=['client_id','redirect_uri','response_type','code_challenge','code_challenge_method','state','scope'].map(k=>'<input type="hidden" name="'+k+'" value="'+String(p.get(k)||'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;')+'">').join('');
    return html(res,200,'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>JM Financeiro - Autorizar</title><body><h2>JM Financeiro - Testes</h2><p>Autorizar somente consultas fictícias, sem dados reais.</p><form method="post" action="/oauth/authorize">'+fields+'<label>Senha de autorização <input type="password" name="password" required autocomplete="off"></label><button type="submit">Autorizar</button></form></body></html>');
