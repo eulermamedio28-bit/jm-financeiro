@@ -9,7 +9,7 @@ import {authenticatedRecordOperation,authenticatedSummary} from './secure-operat
 // Production requires TLS reverse proxy, secrets management and hardened auth.
 const json=(res,status,body)=>{
  const payload=JSON.stringify(body);
- res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'});
+ res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY'});
  res.end(payload);
 };
 async function bodyJson(req){
@@ -36,7 +36,7 @@ export function createFinancialHttpServer(pool){
    if(req.method==='GET'&&['/pilot','/mobile-client.js'].includes(path)){
     const file=path==='/pilot'?'mobile.html':'mobile-client.js';
     const type=path==='/pilot'?'text/html; charset=utf-8':'text/javascript; charset=utf-8';
-    res.writeHead(200,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"});
+    res.writeHead(200,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY','content-security-policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"});
     return res.end(readFileSync(new URL('./'+file,import.meta.url)));
    }
    if(req.method==='GET'&&path==='/health') return json(res,200,{status:'ok',mode:'development-only'});
