@@ -81,7 +81,7 @@ http.createServer(async(req,res)=>{
   res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://jm-financeiro-db-private-test.onrender.com/.well-known/oauth-protected-resource"');
   return respond(401,{error:'unauthorized'});
  }
- if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
+ if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
   try{
@@ -96,6 +96,13 @@ http.createServer(async(req,res)=>{
    const result=await executarMcp({body,authorization:req.headers.authorization,verifyToken:(token)=>oauth.verificarBearer('Bearer '+token),ledger});
    if(result.body===null){res.writeHead(result.status);return res.end();}
    return respond(result.status,result.body);
+  }
+  if(req.url==='/v1/resumo'){
+   if(req.method!=='GET')return respond(405,{error:'method_not_allowed'});
+   const auth=req.headers.authorization;
+   if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
+   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
+   return respond(200,await ledger.resumo(identity.accountId));
   }
   if(req.url==='/v1/lancamentos'){
    const auth=req.headers.authorization;
