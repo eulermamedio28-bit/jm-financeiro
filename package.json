@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node build.js",
     "android:sync": "npx cap sync android",
-    "build:verify": "npm run build && node scripts/verify-online-bridge.js"
+    "build:verify": "npm run build && node scripts/verify-online-bridge.js && npm run test:native-sync",
+    "test:native-sync": "node integration/native-sync/authenticated-summary.test.js"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",
