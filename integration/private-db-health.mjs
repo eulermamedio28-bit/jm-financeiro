@@ -30,7 +30,22 @@ async function run(){
       const found=await client.query('SELECT revision,payload FROM jm_snapshots WHERE account_id=$1',[id]);
       if(found.rowCount!==1||Number(found.rows[0].revision)!==1)throw new Error('test_readback_failed');
       console.log('Test database fictional write/read: verified_rollback');
-      return 'schema_and_fictional_transaction_ok';
+      // Validate the real repository's optimistic concurrency and tenant isolation
+      // against PostgreSQL, within this rollback-only test transaction.
+      const {criarRepositorioSnapshots}=await import('./postgres-repository.mjs');
+      const repository=criarRepositorioSnapshots(client);
+      const otherId='00000000-0000-4000-8000-000000000002';
+      const snapshot={app:'JM Financeiro',versao:2,exportadoEm:new Date().toISOString(),dados:{receitas:[],despesas:[],contas:[],movimentos:[],categorias:[]}};
+      const first=await repository.salvar(otherId,snapshot,0);
+      if(first.conflict||Number(first.revision)!==1)throw new Error('first_save_failed');
+      const isolated=await repository.consultar('00000000-0000-4000-8000-000000000003');
+      if(isolated!==null)throw new Error('account_isolation_failed');
+      const stale=await repository.salvar(otherId,snapshot,0);
+      if(!stale.conflict)throw new Error('stale_revision_not_rejected');
+      const second=await repository.salvar(otherId,snapshot,1);
+      if(second.conflict||Number(second.revision)!==2)throw new Error('revision_increment_failed');
+      console.log('Test repository isolation and revision conflict: verified_rollback');
+      return 'schema_and_repository_tests_ok';
     }finally{await client.query('ROLLBACK');}
   }catch(e){
     console.error('Test database initialization failed:',String(e.code||'error').replace(/[^a-zA-Z0-9_]/g,''));
