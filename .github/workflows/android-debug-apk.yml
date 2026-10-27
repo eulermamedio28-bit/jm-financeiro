@@ -37,11 +37,15 @@ jobs:
           fi
       - name: Sync Android web assets
         run: npm run android:sync
-      - name: Build unsigned debug APK
+      - name: Build debug APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
+      - name: Verify generated APK
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum android/app/build/outputs/apk/debug/app-debug.apk
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
