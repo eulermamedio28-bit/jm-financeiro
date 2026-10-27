@@ -25,3 +25,26 @@ test('gateway de protótipo falha fechado sem autenticação e sem banco', async
     assert.equal(r.status,404);
   } finally { await new Promise((resolve,reject)=>server.close(e=>e?reject(e):resolve())); }
 });
+
+test('credencial configurada autoriza apenas consulta de status', async () => {
+  const original=process.env.JM_BRIDGE_TEST_TOKEN;
+  process.env.JM_BRIDGE_TEST_TOKEN='a'.repeat(64);
+  const {server: protegido}=await import('./bridge-server.mjs?auth-test');
+  await new Promise(resolve=>protegido.listen(0,'127.0.0.1',resolve));
+  const url='http://127.0.0.1:'+protegido.address().port;
+  try {
+    let resposta=await fetch(url+'/v1/sync/status');
+    assert.equal(resposta.status,401);
+    resposta=await fetch(url+'/v1/sync/status',{headers:{Authorization:'Bearer '+ 'b'.repeat(64)}});
+    assert.equal(resposta.status,401);
+    resposta=await fetch(url+'/v1/sync/status',{headers:{Authorization:'Bearer '+ 'a'.repeat(64)}});
+    assert.equal(resposta.status,200);
+    assert.equal((await resposta.json()).syncEnabled,false);
+    resposta=await fetch(url+'/v1/sync',{method:'POST',headers:{Authorization:'Bearer '+ 'a'.repeat(64)},body:'{}'});
+    assert.equal(resposta.status,503);
+  } finally {
+    await new Promise(resolve=>protegido.close(resolve));
+    if(original===undefined) delete process.env.JM_BRIDGE_TEST_TOKEN;
+    else process.env.JM_BRIDGE_TEST_TOKEN=original;
+  }
+});
