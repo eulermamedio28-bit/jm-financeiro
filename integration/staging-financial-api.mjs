@@ -7,6 +7,7 @@ import {createRemoteJWKSet,jwtVerify} from 'jose';
 import {criarRepositorioSnapshots} from './postgres-repository.mjs';
 import {criarRotasFinanceiras} from './authenticated-routes.mjs';
 import {prepararLancamentos,criarLancamentos} from './ledger-staging.mjs';
+import {executarMcp} from './mcp-financial.mjs';
 const port=Number(process.env.PORT||10000);
 const dbName='jm_financeiro_integracao_teste';
 const supabaseUrl=process.env.SUPABASE_URL?.replace(/\/$/,'');
@@ -41,7 +42,7 @@ http.createServer(async(req,res)=>{
  const respond=(code,obj)=>{res.writeHead(code);res.end(JSON.stringify(obj));};
  if(req.method==='GET'&&req.url==='/health')return respond(200,{service:'jm-financeiro-staging',readyForFinancialData:ready});
  if(!ready||!routes)return respond(503,{error:'api_not_ready'});
- if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos'].includes(req.url))return respond(404,{error:'not_found'});
+ if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
   try{
@@ -51,6 +52,12 @@ http.createServer(async(req,res)=>{
   }catch{return respond(400,{error:'invalid_json'});}
  }
  try{
+  if(req.url==='/mcp'){
+   if(req.method!=='POST')return respond(405,{error:'method_not_allowed'});
+   const result=await executarMcp({body,authorization:req.headers.authorization,verifyToken,ledger});
+   if(result.body===null){res.writeHead(result.status);return res.end();}
+   return respond(result.status,result.body);
+  }
   if(req.url==='/v1/lancamentos'){
    const auth=req.headers.authorization;
    if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
