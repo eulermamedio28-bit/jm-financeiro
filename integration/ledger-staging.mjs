@@ -17,8 +17,8 @@ export function criarLancamentos(pool){
   if(!TYPES.has(input?.tipo)||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.descricao!=='string'||!input.descricao.trim()||input.descricao.length>500||typeof input.client_request_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.client_request_id)||typeof input.data!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(input.data)||Number.isNaN(Date.parse(input.data+'T00:00:00Z')))throw Error('invalid_entry');
   for(const k of ['categoria','conta'])if(input[k]!=null&&(typeof input[k]!=='string'||input[k].length>120))throw Error('invalid_entry');
   const args=[randomUUID(),accountId,input.client_request_id,input.tipo,input.valor_centavos,input.descricao.trim(),input.categoria||null,input.conta||null,input.data];
-  const {rows}=await pool.query(`WITH account AS (INSERT INTO jm_accounts(id) VALUES($2::uuid) ON CONFLICT DO NOTHING)
- INSERT INTO jm_lancamentos(id,account_id,client_request_id,tipo,valor_centavos,descricao,categoria,conta,data)
+  await pool.query('INSERT INTO jm_accounts(id) VALUES($1::uuid) ON CONFLICT DO NOTHING',[accountId]);
+  const {rows}=await pool.query(`INSERT INTO jm_lancamentos(id,account_id,client_request_id,tipo,valor_centavos,descricao,categoria,conta,data)
  VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9::date)
  ON CONFLICT(account_id,client_request_id) DO NOTHING RETURNING *`,args);
   if(rows.length)return {created:true,lancamento:rows[0]};
