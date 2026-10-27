@@ -22,23 +22,32 @@ export function criarRepositorioSnapshots(pool) {
     validarSnapshot(snapshot);
     const payload = JSON.stringify(snapshot);
     if (Buffer.byteLength(payload, 'utf8') > 2_000_000) throw new Error('Backup excede o limite de armazenamento');
-    // Provisionamento e gravação em uma única instrução atômica.
-    // O identificador da conta vem exclusivamente do token validado pela API.
-    const {rows}=await pool.query(
-      `WITH provisioned AS (
-         INSERT INTO jm_accounts (id) VALUES ($1::uuid)
-         ON CONFLICT (id) DO NOTHING
-         RETURNING id
-       )
-       INSERT INTO jm_snapshots (account_id, schema_version, payload, revision)
-       SELECT $1::uuid, 2, $2::jsonb, 1
-       WHERE $3::bigint = 0
-       ON CONFLICT (account_id) DO UPDATE
-       SET payload=EXCLUDED.payload, revision=jm_snapshots.revision+1, updated_at=now()
-       WHERE jm_snapshots.revision=$3::bigint
-       RETURNING revision, updated_at`,
-      [accountId,payload,revisaoEsperada]
-    );
+    // Initial creation and subsequent updates are distinct operations.
+    // For expectedRevision > 0, an INSERT ... WHERE expectedRevision=0
+    // would never reach ON CONFLICT and could not update the snapshot.
+    let rows;
+    if (revisaoEsperada === 0) {
+      ({rows}=await pool.query(
+        `WITH provisioned AS (
+           INSERT INTO jm_accounts (id) VALUES ($1::uuid)
+           ON CONFLICT (id) DO NOTHING
+           RETURNING id
+         )
+         INSERT INTO jm_snapshots (account_id, schema_version, payload, revision)
+         VALUES ($1::uuid, 2, $2::jsonb, 1)
+         ON CONFLICT (account_id) DO NOTHING
+         RETURNING revision, updated_at`,
+        [accountId,payload]
+      ));
+    } else {
+      ({rows}=await pool.query(
+        `UPDATE jm_snapshots
+         SET payload=$2::jsonb, revision=revision+1, updated_at=now()
+         WHERE account_id=$1::uuid AND revision=$3::bigint
+         RETURNING revision, updated_at`,
+        [accountId,payload,revisaoEsperada]
+      ));
+    }
     if (!rows.length) return {conflict:true};
     return {conflict:false,revision:rows[0].revision,updatedAt:rows[0].updated_at};
   }
