@@ -19,7 +19,7 @@ export function criarRotasFinanceiras({verifyAccessToken,repository}) {
       return {status:401,body:{error:'unauthorized'}};
 
     if(path==='/v1/sync/status' && method==='GET')
-      return {status:200,body:{syncEnabled:true,accountAuthenticated:true}};
+      return {status:200,body:{syncEnabled:false,accountAuthenticated:true,reason:'deployment_not_ready'}};
     if(path==='/v1/sync' && method==='GET') {
       const snapshot=await repository.consultar(accountId);
       return snapshot ? {status:200,body:snapshot} : {status:404,body:{error:'snapshot_not_found'}};
