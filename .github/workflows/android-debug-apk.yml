@@ -30,7 +30,8 @@ jobs:
           set -o pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || { code="${PIPESTATUS[1]}"; test "$code" -eq 0; }
       - name: Install Android SDK packages
-        run: "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Install JS dependencies
         run: npm install --no-audit --no-fund
       - name: Build and verify web interface
