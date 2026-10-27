@@ -44,7 +44,8 @@ export function criarClientePonte({ endpoint, obterToken, fetchImpl = fetch }) {
       if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)
         throw new Error('Revisão esperada obrigatória');
       const payload = {schemaVersion:2,snapshot,expectedRevision};
-      if (JSON.stringify(payload).length > 2_000_000) throw new Error('Backup excede o limite de envio');
+      if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > 2_000_000)
+        throw new Error('Backup excede o limite de envio');
       return requisitar('/v1/sync', {method:'POST',body:payload});
     }
   });
