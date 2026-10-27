@@ -1,4 +1,3 @@
-
 {
   "name": "jm-financeiro",
   "version": "1.0.0",
@@ -6,7 +5,8 @@
   "description": "Aplicativo financeiro do Restaurante JM",
   "scripts": {
     "build": "node build.js",
-    "android:sync": "npx cap sync android"
+    "android:sync": "npx cap sync android",
+    "build:verify": "npm run build && node scripts/verify-online-bridge.js"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",
