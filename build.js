@@ -36,3 +36,8 @@ if (!html.includes('id="jm-online-panel-link"')) {
 }
 
 console.log("Arquivos do JM Financeiro preparados.");
+
+// Etapa 9: adicionar interface autenticada somente leitura ao build.
+fs.copyFileSync(path.join('integration','native-sync','android-summary-ui.js'),path.join('www','android-summary-ui.js'));
+let page=fs.readFileSync(htmlPath,'utf8');
+if(!page.includes('src="android-summary-ui.js"')){page=page.replace('</body>','<script src="android-summary-ui.js" defer></script></body>');fs.writeFileSync(htmlPath,page);}
