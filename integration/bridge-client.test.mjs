@@ -86,3 +86,23 @@ test('limite de 2 MB considera bytes UTF-8 e não apenas caracteres',()=>{
   assert.throws(()=>cliente.enviarSnapshot(comAcentos,0),/limite/);
   assert.equal(chamadas,0);
 });
+
+test('consulta remota é explícita e não altera dados locais',async()=>{
+  const local=vazio();
+  let chamadas=0;
+  const cliente=criarClientePonte({
+    endpoint:'https://example.com',
+    obterToken:()=> 'credencial-de-teste-comprida-12345',
+    fetchImpl:async (url,options)=>{
+      chamadas++;
+      assert.equal(url,'https://example.com/v1/sync');
+      assert.equal(options.method,'GET');
+      assert.equal(options.body,undefined);
+      return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({revision:1,payload:vazio()})};
+    }
+  });
+  assert.equal(chamadas,0);
+  assert.equal((await cliente.consultarSnapshot()).revision,1);
+  assert.deepEqual(local,vazio());
+  assert.equal(chamadas,1);
+});
