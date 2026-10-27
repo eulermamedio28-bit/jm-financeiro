@@ -1,0 +1,25 @@
+name: JM Financeiro - Testes da ponte isolada
+on:
+  push:
+    branches: [dev/jm-financeiro-integracao-segura]
+    paths:
+      - 'integration/**'
+      - '.github/workflows/test-bridge.yml'
+  workflow_dispatch:
+jobs:
+  bridge-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar sintaxe dos módulos
+        run: |
+          node --check integration/snapshot-readonly.mjs
+          node --check integration/bridge-client.mjs
+          node --check integration/bridge-server.mjs
+      - name: Executar testes
+        run: node --test integration/*.test.mjs
