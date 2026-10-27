@@ -15,7 +15,8 @@ export function criarRotasFinanceiras({verifyAccessToken,repository}) {
     try { identity=await verifyAccessToken(authorization.slice(7)); }
     catch { return {status:401,body:{error:'unauthorized'}}; }
     const accountId=identity?.accountId;
-    if(typeof accountId!=='string') return {status:401,body:{error:'unauthorized'}};
+    if(typeof accountId!=='string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(accountId))
+      return {status:401,body:{error:'unauthorized'}};
 
     if(path==='/v1/sync/status' && method==='GET')
       return {status:200,body:{syncEnabled:true,accountAuthenticated:true}};
