@@ -24,6 +24,9 @@ export async function recordOperation(pool,{kind,input,idempotencyKey,actor}) {
   const id=randomUUID();
   let result;
   if(kind==='entry'){
+   // Mesma trava utilizada nas transferências: impede alteração concorrente
+   // do saldo da conta enquanto o lançamento é gravado.
+   await client.query('SELECT id FROM accounts WHERE id=$1 AND establishment_id=$2 FOR UPDATE',[data.account_id,data.establishment_id]);
    const q=await client.query(`INSERT INTO entries(id,establishment_id,kind,account_id,category_id,description,amount_cents)
     VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,establishment_id,kind,account_id,category_id,description,amount_cents,created_at`,
     [id,data.establishment_id,data.kind,data.account_id,data.category_id,data.description,data.amount_cents]);
