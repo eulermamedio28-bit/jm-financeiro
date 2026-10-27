@@ -11,3 +11,9 @@ export async function authenticatedCatalog(pool,{token,establishmentId}){
  ]);
  return {accounts:accounts.rows,categories:categories.rows};
 }
+
+export async function authenticatedEstablishments(pool,{token}){
+ await authenticatedActor(pool,token);
+ const result=await pool.query('SELECT id,name FROM establishments ORDER BY name,id');
+ return {establishments:result.rows};
+}
