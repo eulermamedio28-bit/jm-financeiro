@@ -14,22 +14,24 @@ export async function seedLocalPilot({databaseUrl=process.env.JM_PILOT_DATABASE_
   if(tables.rows[0].establishments)throw Error('Banco já inicializado; use um banco descartável vazio');
   await pool.query(readFileSync(new URL('./migrations/001_initial.sql',import.meta.url),'utf8'));
   await pool.query(readFileSync(new URL('./migrations/002_auth.sql',import.meta.url),'utf8'));
-  await pool.query('BEGIN');
+  const client=await pool.connect();
   try{
-   await pool.query('INSERT INTO auth_users(username,password_hash) VALUES($1,$2)',['euler',hashPassword(password)]);
+   await client.query('BEGIN');
+   await client.query('INSERT INTO auth_users(username,password_hash) VALUES($1,$2)',['euler',hashPassword(password)]);
    const establishments=[
     ['11111111-1111-4111-8111-111111111111','Restaurante JM — FICTÍCIO'],
     ['22222222-2222-4222-8222-222222222222','Açaí São Carlos — FICTÍCIO']
    ];
    for(const [id,name] of establishments){
-    await pool.query('INSERT INTO establishments(id,name) VALUES($1,$2)',[id,name]);
-    await pool.query('INSERT INTO accounts(id,establishment_id,name,opening_cents) VALUES(gen_random_uuid(),$1,$2,$3)',[id,'Caixa fictício',100000]);
-    await pool.query('INSERT INTO accounts(id,establishment_id,name,opening_cents) VALUES(gen_random_uuid(),$1,$2,$3)',[id,'Banco fictício',50000]);
-    await pool.query('INSERT INTO categories(id,establishment_id,name) VALUES(gen_random_uuid(),$1,$2)',[id,'Vendas fictícias']);
-    await pool.query('INSERT INTO categories(id,establishment_id,name) VALUES(gen_random_uuid(),$1,$2)',[id,'Compras fictícias']);
+    await client.query('INSERT INTO establishments(id,name) VALUES($1,$2)',[id,name]);
+    await client.query('INSERT INTO accounts(id,establishment_id,name,opening_cents) VALUES(gen_random_uuid(),$1,$2,$3)',[id,'Caixa fictício',100000]);
+    await client.query('INSERT INTO accounts(id,establishment_id,name,opening_cents) VALUES(gen_random_uuid(),$1,$2,$3)',[id,'Banco fictício',50000]);
+    await client.query('INSERT INTO categories(id,establishment_id,name) VALUES(gen_random_uuid(),$1,$2)',[id,'Vendas fictícias']);
+    await client.query('INSERT INTO categories(id,establishment_id,name) VALUES(gen_random_uuid(),$1,$2)',[id,'Compras fictícias']);
    }
-   await pool.query('COMMIT');
-  }catch(error){await pool.query('ROLLBACK');throw error}
+   await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK');throw error}
+  finally{client.release()}
   return {establishments:2,accounts:4,categories:4,realFinancialData:false};
  }finally{await pool.end()}
 }
