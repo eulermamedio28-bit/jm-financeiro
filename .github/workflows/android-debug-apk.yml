@@ -28,7 +28,7 @@ jobs:
       - name: Accept Android SDK licenses
         run: |
           set -o pipefail
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || test "${PIPESTATUS[1]}" -eq 0
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || { code="${PIPESTATUS[1]}"; test "$code" -eq 0; }
       - name: Install Android SDK packages
         run: "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Install JS dependencies
