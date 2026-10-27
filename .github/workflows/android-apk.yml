@@ -28,7 +28,7 @@ jobs:
 
       - name: Preparar aplicativo
         run: |
-          npm run build
+          npm run build:verify
           npx cap add android
           npx cap sync android
 
