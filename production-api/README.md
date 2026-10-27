@@ -27,3 +27,20 @@
 Não executar este adaptador HTTP numa interface pública. Ele não implementa TLS, rate limiting distribuído nem bootstrap seguro de usuário. Não reutilizar o MCP fictício público para dados financeiros reais.
 
 Testes: `cd production-api && npm install && npm test`. Integrações PostgreSQL exigem `JM_TEST_DATABASE_URL` apontando para banco **descartável**; migrações e testes alteram esse banco. Nunca utilizar a URL de produção.
+
+## Piloto local descartável (não acessível pelo celular em outra rede)
+
+Requer Node 22+ e PostgreSQL 16+ **local**, em banco vazio separado. Nunca usar credenciais ou dados reais. Defina no terminal, sem salvar no GitHub:
+
+```bash
+cd production-api
+npm install
+export JM_PILOT_DATABASE_URL='postgresql://USUARIO:SENHA@127.0.0.1:5432/jm_pilot_descartavel'
+export JM_PILOT_PASSWORD='SENHA_DE_TESTE_COM_12_OU_MAIS_CARACTERES'
+node seed-local-pilot.js
+node local-pilot.js
+```
+
+Abra `http://127.0.0.1:8787/pilot` **no próprio computador** e entre como Euler usando a senha fictícia definida. O script de preparação recusa bancos já inicializados, recusa bancos remotos e cria estabelecimentos, contas e categorias fictícios. Não cria dados reais. O servidor escuta apenas no loopback; não exponha via túnel, proxy público, redirecionamento de portas ou internet.
+
+**Próximo marco para o Samsung:** criar um serviço separado de homologação com HTTPS, banco descartável privado, autenticação reforçada, proteção de rede e revisão de segurança antes de qualquer exposição. Não confundir o piloto local com uma implantação segura de homologação.
