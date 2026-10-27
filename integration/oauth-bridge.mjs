@@ -10,7 +10,7 @@ export async function prepararOAuth(pool){
 export function criarOAuth(pool,verifySupabase){
  async function verificarBearer(value){if(!value||!value.startsWith('Bearer '))throw Error('unauthorized');const raw=value.slice(7);const {rows}=await pool.query('SELECT account_id FROM jm_oauth_tokens WHERE token_hash=$1 AND expires_at>now()',[sha(raw)]);if(!rows.length)throw Error('unauthorized');return {accountId:rows[0].account_id};}
  async function autorizar({supabaseToken,redirectUri,challenge,clientId}){
-  if(clientId!==client||typeof challenge!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(challenge)||typeof redirectUri!=='string'||!/^https:\/\/(?:chatgpt\.com|chat\.openai\.com)\/connector_platform_oauth_redirect(?:\?.*)?$/.test(redirectUri))throw Error('invalid_request');
+  if(clientId!==client||typeof challenge!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(challenge)||typeof redirectUri!=='string'||redirectUri!=='https://chatgpt.com/connector/oauth/X9qB9nL-7lAp')throw Error('invalid_request');
   const {accountId}=await verifySupabase(supabaseToken);
   const code=token();await pool.query('INSERT INTO jm_oauth_codes(code_hash,account_id,redirect_uri,challenge,client_id,expires_at) VALUES($1,$2,$3,$4,$5,now()+interval \'5 minutes\')',[sha(code),accountId,redirectUri,challenge,clientId]);
   return code;
