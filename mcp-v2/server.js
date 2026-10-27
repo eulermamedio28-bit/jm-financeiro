@@ -55,6 +55,10 @@ server.listen(port,'0.0.0.0',async()=>{
    if(payload?.source!=='fictional-demo')throw Error(name+' invalid payload');
    console.log('[mcp-selftest] PASS '+name);
   }
+  const preview=await fetch('http://127.0.0.1:'+port+'/preview');
+  const html=await preview.text();
+  if(preview.status!==200||!html.includes('DEMONSTRAÇÃO FICTÍCIA')||!html.includes('Açaí São Carlos'))throw Error('mobile preview failed');
+  console.log('[mcp-selftest] PASS mobile preview HTTP 200');
   console.log('[mcp-selftest] PASS initialize, tools/list, four tools/call');
  }catch(err){console.error('[mcp-selftest] FAIL',err.message);process.exitCode=1;}
 });
