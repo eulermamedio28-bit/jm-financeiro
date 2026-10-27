@@ -49,3 +49,27 @@ test('bloqueia caminho inesperado, credencial com quebra de linha e backup exces
   assert.equal(chamadas,0);
 });
 
+
+test('envio exige revisão e inclui expectedRevision no corpo',async()=>{
+  const backup=vazio();
+  let chamadas=0;
+  const cliente=criarClientePonte({
+    endpoint:'https://example.com',
+    obterToken:()=> 'token-valido-de-teste-123456789',
+    fetchImpl:async (url,options)=>{
+      chamadas++;
+      assert.equal(url,'https://example.com/v1/sync');
+      assert.equal(options.method,'POST');
+      const body=JSON.parse(options.body);
+      assert.equal(body.expectedRevision,0);
+      assert.equal(body.schemaVersion,2);
+      assert.deepEqual(body.snapshot,backup);
+      return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({revision:1})};
+    }
+  });
+  assert.throws(()=>cliente.enviarSnapshot(backup),/Revisão/);
+  assert.throws(()=>cliente.enviarSnapshot(backup,-1),/Revisão/);
+  assert.equal(chamadas,0);
+  assert.deepEqual(await cliente.enviarSnapshot(backup,0),{revision:1});
+  assert.equal(chamadas,1);
+});
