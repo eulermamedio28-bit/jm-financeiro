@@ -21,7 +21,9 @@ jobs:
           java-version: '21'
       - uses: android-actions/setup-android@v3
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses > /dev/null || true
+        run: |
+          set -o pipefail
+          yes | sdkmanager --licenses > /dev/null || test "${PIPESTATUS[1]}" -eq 0
       - name: Install Android SDK packages
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Install JS dependencies
