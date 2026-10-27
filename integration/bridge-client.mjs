@@ -30,6 +30,7 @@ export function criarClientePonte({ endpoint, obterToken, fetchImpl = fetch }) {
         ...(body === undefined ? {} : {body: JSON.stringify(body)}),
         signal: controller.signal
       });
+      if (resposta.status === 409) throw new Error('Conflito de revisão: os dados remotos foram alterados');
       if (!resposta.ok) throw new Error('Gateway indisponível ou acesso negado (' + resposta.status + ')');
       const tipo = resposta.headers.get('content-type') || '';
       if (!tipo.includes('application/json')) throw new Error('Resposta inesperada do gateway');
