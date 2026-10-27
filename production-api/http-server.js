@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {login,logout} from './auth-db.js';
+import {createLoginLimiter} from './login-limiter.js';
 import {authenticatedCatalog,authenticatedEstablishments} from './catalog.js';
 import {authenticatedRecordOperation,authenticatedSummary} from './secure-operations.js';
 
@@ -28,6 +29,7 @@ const bearer=req=>{
  return match[1];
 };
 export function createFinancialHttpServer(pool){
+ const loginLimiter=createLoginLimiter();
  return createServer(async(req,res)=>{
   try{
    const path=new URL(req.url,'http://localhost').pathname;
@@ -39,6 +41,7 @@ export function createFinancialHttpServer(pool){
    }
    if(req.method==='GET'&&path==='/health') return json(res,200,{status:'ok',mode:'development-only'});
    if(req.method==='POST'&&path==='/api/login'){
+    if(!loginLimiter.allow(req.socket.remoteAddress))return json(res,429,{error:'Muitas tentativas. Aguarde antes de tentar novamente.'});
     const data=await bodyJson(req);
     return json(res,200,await login(pool,{username:data.username,password:data.password}));
    }
