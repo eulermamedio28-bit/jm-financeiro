@@ -21,10 +21,12 @@ test('gravação usa parâmetros e detecta conflito de revisão',async()=>{
   const chamadas=[];
   const repo=criarRepositorioSnapshots({query:async(...args)=>{chamadas.push(args);return {rows:[]};}});
   assert.deepEqual(await repo.salvar(conta,snapshot(),0),{conflict:true});
-  assert.equal(chamadas.length,1);
-  assert.equal(chamadas[0][1][0],conta);
-  assert.equal(chamadas[0][1][2],0);
-  assert.equal(JSON.parse(chamadas[0][1][1]).app,'JM Financeiro');
+  assert.equal(chamadas.length,2);
+  assert.match(chamadas[0][0],/INSERT INTO jm_accounts/);
+  assert.deepEqual(chamadas[0][1],[conta]);
+  assert.equal(chamadas[1][1][0],conta);
+  assert.equal(chamadas[1][1][2],0);
+  assert.equal(JSON.parse(chamadas[1][1][1]).app,'JM Financeiro');
 });
 test('rejeita revisão e backup excessivo antes de gravar',async()=>{
   let chamadas=0;
