@@ -1,0 +1,8 @@
+{
+  "name": "jm-financeiro-db-integration-test",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
