@@ -10,6 +10,7 @@ export async function executarMcp({body,authorization,verifyToken,ledger}){
  const id=body?.id??null;
  const fail=(code,message)=>({jsonrpc:'2.0',id,error:{code,message}});
  if(body?.jsonrpc!=='2.0'||typeof body?.method!=='string')return {status:400,body:fail(-32600,'Invalid Request')};
+ if(body.method==='ping')return {status:200,body:{jsonrpc:'2.0',id,result:{}}};
  if(body.method==='initialize')return {status:200,body:{jsonrpc:'2.0',id,result:{protocolVersion:'2025-03-26',capabilities:{tools:{listChanged:false}},serverInfo:{name:'JM Financeiro',version:'0.1.0'}}}};
  if(body.method==='notifications/initialized')return {status:202,body:null};
  if(typeof authorization!=='string'||!authorization.startsWith('Bearer '))return {status:401,body:fail(-32001,'Authentication required')};
