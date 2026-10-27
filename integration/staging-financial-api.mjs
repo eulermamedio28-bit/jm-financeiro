@@ -93,7 +93,7 @@ http.createServer(async(req,res)=>{
  try{
   if(req.url==='/mcp'){
    if(req.method!=='POST')return respond(405,{error:'method_not_allowed'});
-   const result=await executarMcp({body,authorization:req.headers.authorization,verifyToken:oauth.verificarBearer,ledger});
+   const result=await executarMcp({body,authorization:req.headers.authorization,verifyToken:(token)=>oauth.verificarBearer('Bearer '+token),ledger});
    if(result.body===null){res.writeHead(result.status);return res.end();}
    return respond(result.status,result.body);
   }
