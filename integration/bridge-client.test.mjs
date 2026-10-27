@@ -106,3 +106,14 @@ test('consulta remota é explícita e não altera dados locais',async()=>{
   assert.deepEqual(local,vazio());
   assert.equal(chamadas,1);
 });
+
+test('conflito HTTP 409 é informado sem tentar sobrescrever dados',async()=>{
+  let chamadas=0;
+  const cliente=criarClientePonte({
+    endpoint:'https://example.com',
+    obterToken:()=> 'credencial-de-teste-comprida-12345',
+    fetchImpl:async()=>{chamadas++;return {ok:false,status:409};}
+  });
+  await assert.rejects(cliente.enviarSnapshot(vazio(),0),/Conflito de revisão/);
+  assert.equal(chamadas,1);
+});
