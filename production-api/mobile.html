@@ -9,6 +9,8 @@ const client=createMobileClient({baseUrl:location.origin});
 const el=id=>document.getElementById(id);
 const money=cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(cents)/100);
 const message=text=>el('status').textContent=text;
+const handleError=(fallback,error)=>{if(!client.authenticated){el('dashboard').style.display='none';el('login').style.display='block';message('Sessão encerrada. Entre novamente.');return;}message(error?.message||fallback);};
+const withBusy=async(form,operation)=>{const button=form.querySelector('button[type="submit"]');if(button.disabled)return;button.disabled=true;try{await operation();}finally{button.disabled=false;}};
 const fillSelect=(id,items)=>{const select=el(id);select.replaceChildren(new Option('Selecione...', ''));for(const item of items)select.add(new Option(item.name,item.id));};
 el('login-form').addEventListener('submit',async e=>{
  e.preventDefault();message('Validando acesso...');
@@ -17,7 +19,7 @@ el('login-form').addEventListener('submit',async e=>{
 });
 el('refresh').addEventListener('click',async()=>{
  try{const establishmentId=el('establishment').value.trim();const [data,catalog]=await Promise.all([client.summary(establishmentId),client.catalog(establishmentId)]);fillSelect('entry-account',catalog.accounts);fillSelect('transfer-from',catalog.accounts);fillSelect('transfer-to',catalog.accounts);fillSelect('entry-category',catalog.categories);el('income').textContent=money(data.income_cents);el('expense').textContent=money(data.expense_cents);el('balance').textContent=money(data.balance_cents);message('Resumo, contas e categorias atualizados.');}
- catch{handleError('Não foi possível consultar. Verifique o estabelecimento.')}
+ catch(error){handleError('Não foi possível consultar. Verifique o estabelecimento.',error)}
 });
 el('entry-form').addEventListener('submit',async e=>{
  e.preventDefault();
@@ -28,8 +30,10 @@ el('entry-form').addEventListener('submit',async e=>{
  const input={kind:el('entry-kind').value,establishment_id:el('establishment').value.trim(),account_id:el('entry-account').value.trim(),category_id:el('entry-category').value.trim(),description:el('entry-description').value.trim(),amount_cents:cents};
  if(!confirm('Confirmar lançamento FICTÍCIO de '+money(cents)+'?'))return;
  const key='mobile_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
- try{await client.record('entry',input,key);message('Lançamento fictício registrado.');el('entry-form').reset();el('refresh').click();}
- catch{handleError('Falha ao registrar. Confira os dados.');}
+ await withBusy(el('entry-form'),async()=>{
+  try{await client.record('entry',input,key);message('Lançamento fictício registrado.');el('entry-form').reset();el('refresh').click();}
+  catch(error){handleError('Falha ao registrar. Confira os dados.',error);}
+ });
 });
 el('transfer-form').addEventListener('submit',async e=>{
  e.preventDefault();
@@ -42,8 +46,10 @@ el('transfer-form').addEventListener('submit',async e=>{
  const input={establishment_id:el('establishment').value.trim(),from_account_id:from,to_account_id:to,description:el('transfer-description').value.trim(),amount_cents:cents};
  if(!confirm('Confirmar transferência FICTÍCIA de '+money(cents)+' entre contas?'))return;
  const key='transfer_mobile_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
- try{await client.record('transfer',input,key);message('Transferência fictícia registrada. Não altera receitas ou despesas consolidadas.');el('transfer-form').reset();el('refresh').click();}
- catch{handleError('Falha ao transferir. Confira as contas e o saldo.');}
+ await withBusy(el('transfer-form'),async()=>{
+  try{await client.record('transfer',input,key);message('Transferência fictícia registrada. Não altera receitas ou despesas consolidadas.');el('transfer-form').reset();el('refresh').click();}
+  catch(error){handleError('Falha ao transferir. Confira as contas e o saldo.',error);}
+ });
 });
 el('logout').addEventListener('click',async()=>{
  try{await client.logout()}catch{}finally{el('dashboard').style.display='none';el('login').style.display='block';message('Sessão encerrada.')}
