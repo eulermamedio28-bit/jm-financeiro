@@ -15,7 +15,7 @@ test('expense and outgoing transfer compete for same balance safely',async t=>{
   await pool.query('INSERT INTO accounts(id,establishment_id,name,opening_cents) VALUES($1,$2,$3,$4),($5,$2,$6,$7)',[source,establishment,'Origem',1000,destination,'Destino',0]);
   await pool.query('INSERT INTO categories(id,establishment_id,name) VALUES($1,$2,$3)',[category,establishment,'Despesa']);
   const expense=recordOperation(pool,{kind:'entry',actor:'euler',idempotencyKey:'race_expense_123456',input:{kind:'expense',amount_cents:700,description:'Compra',establishment_id:establishment,account_id:source,category_id:category}});
-  const transfer=recordOperation(pool,{kind:'transfer',actor:'euler',idempotencyKey:'race_transfer_123456',input:{amount_cents:700,establishment_id:establishment,from_account_id:source,to_account_id:destination}});
+  const transfer=recordOperation(pool,{kind:'transfer',actor:'euler',idempotencyKey:'race_transfer_123456',input:{amount_cents:700,description:'Transferência entre contas',establishment_id:establishment,from_account_id:source,to_account_id:destination}});
   const results=await Promise.allSettled([expense,transfer]);
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
   assert.equal(results.filter(r=>r.status==='rejected'&&/Saldo insuficiente/.test(r.reason.message)).length,1);
