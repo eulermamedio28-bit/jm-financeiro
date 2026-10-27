@@ -72,6 +72,7 @@ export function createFinancialHttpServer(pool){
    return json(res,404,{error:'Rota inexistente'});
   }catch(e){
    const message=String(e.message||'');
+   if(/Saldo insuficiente/i.test(message))return json(res,409,{error:'Saldo insuficiente para realizar a operação'});
    const unauthorized=/Autenticação|Token inválido|Sessão inválida|Credenciais|bloqueado|autorizado/i.test(message);
    const badRequest=/JSON|inválid|obrigatóri|grande|desconhecida|insuficiente|Chave/i.test(message);
    return json(res,unauthorized?401:badRequest?400:500,{error:unauthorized?'Acesso negado':badRequest?'Requisição inválida':'Erro interno'});
