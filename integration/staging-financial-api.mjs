@@ -39,6 +39,16 @@ async function initialize(){
 await initialize().catch(e=>{console.error('API initialization refused:',e.message);ready=false});
 http.createServer(async(req,res)=>{
  res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');
+ const origin=req.headers.origin;
+ if(origin==='https://jm-financeiro-ativacao-teste.onrender.com'){
+  res.setHeader('Access-Control-Allow-Origin',origin);
+  res.setHeader('Vary','Origin');
+  res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');
+  res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');
+ }
+ if(req.method==='OPTIONS'){
+  res.writeHead(origin==='https://jm-financeiro-ativacao-teste.onrender.com'?204:403);return res.end();
+ }
  const respond=(code,obj)=>{res.writeHead(code);res.end(JSON.stringify(obj));};
  if(req.method==='GET'&&req.url==='/health')return respond(200,{service:'jm-financeiro-staging',readyForFinancialData:ready});
  if(!ready||!routes)return respond(503,{error:'api_not_ready'});
