@@ -24,6 +24,10 @@ export function createMobileClient({baseUrl,fetchImpl=fetch}){
    token=result.token;
    return {expiresAt:result.expiresAt};
   },
+  async establishments(){
+   if(!token) throw Error('Sessão necessária');
+   return request('/api/establishments');
+  },
   async catalog(establishmentId){
    if(!token) throw Error('Sessão necessária');
    return request('/api/catalog?establishmentId='+encodeURIComponent(establishmentId));
