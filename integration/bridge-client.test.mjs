@@ -45,7 +45,7 @@ test('bloqueia caminho inesperado, credencial com quebra de linha e backup exces
   assert.equal(chamadas,0);
   const grande=vazio();
   grande.dados.receitas=[{desc:'x'.repeat(2_000_001)}];
-  assert.throws(()=>cliente.enviarSnapshot(grande),/limite/);
+  assert.throws(()=>cliente.enviarSnapshot(grande,0),/limite/);
   assert.equal(chamadas,0);
 });
 
