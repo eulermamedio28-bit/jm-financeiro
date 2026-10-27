@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import http from 'node:http';
 const port=Number(process.env.PORT||10000);
 const tools=[
@@ -12,6 +13,7 @@ const summary={source:'fictional-demo',currency:'BRL',income_cents:285000,expens
 const responseFor=(name)=>name==='consultar_resumo_ficticio'?summary:name==='consultar_mes_ficticio'?{...summary,month:'2026-10'}:name==='consultar_categorias_ficticias'?{...summary,month:'2026-10',income:[{category:'Marmitas',amount_cents:200000},{category:'Bebidas',amount_cents:55000},{category:'Sobremesas',amount_cents:30000}],expenses:[{category:'Ingredientes',amount_cents:100000},{category:'Embalagens',amount_cents:32000},{category:'Operacional',amount_cents:42000}]}:{source:'fictional-demo',previous:{month:'2026-09',income_cents:250000,expense_cents:160000,balance_cents:90000},current:{month:'2026-10',...summary},notice:'Comparativo fictício.'};
 const server=http.createServer(async(req,res)=>{
  const path=new URL(req.url,'http://localhost').pathname;
+ if(path==='/preview'&&req.method==='GET'){res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"});return res.end(readFileSync(new URL('./mobile-preview.html',import.meta.url)));}
  if(path==='/health'&&req.method==='GET')return send(res,200,{status:'ok',service:'jm-financeiro-mcp-v2',mode:'fictional-read-only',financialData:false});
  if(path!=='/mcp')return send(res,404,{error:'not_found'});
  if(req.method==='GET'){res.writeHead(405,{'allow':'POST, DELETE'});return res.end();}
