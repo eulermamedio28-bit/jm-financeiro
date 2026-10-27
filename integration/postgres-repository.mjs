@@ -22,15 +22,17 @@ export function criarRepositorioSnapshots(pool) {
     validarSnapshot(snapshot);
     const payload = JSON.stringify(snapshot);
     if (Buffer.byteLength(payload, 'utf8') > 2_000_000) throw new Error('Backup excede o limite de armazenamento');
-    // A conta é provisionada exclusivamente a partir do accountId verificado pela API.
-    // Não aceitar identificadores enviados pelo cliente.
-    await pool.query(
-      'INSERT INTO jm_accounts (id) VALUES ($1::uuid) ON CONFLICT (id) DO NOTHING',
-      [accountId]
-    );
+    // Provisionamento e gravação em uma única instrução atômica.
+    // O identificador da conta vem exclusivamente do token validado pela API.
     const {rows}=await pool.query(
-      `INSERT INTO jm_snapshots (account_id, schema_version, payload, revision)
-       SELECT $1::uuid, 2, $2::jsonb, 1 WHERE $3::bigint = 0
+      `WITH provisioned AS (
+         INSERT INTO jm_accounts (id) VALUES ($1::uuid)
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id
+       )
+       INSERT INTO jm_snapshots (account_id, schema_version, payload, revision)
+       SELECT $1::uuid, 2, $2::jsonb, 1
+       WHERE $3::bigint = 0
        ON CONFLICT (account_id) DO UPDATE
        SET payload=EXCLUDED.payload, revision=jm_snapshots.revision+1, updated_at=now()
        WHERE jm_snapshots.revision=$3::bigint
