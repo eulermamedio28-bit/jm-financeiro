@@ -42,14 +42,14 @@ await initialize().catch(e=>{console.error('API initialization refused:',e.messa
 http.createServer(async(req,res)=>{
  res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');
  const origin=req.headers.origin;
- if(origin==='https://jm-financeiro-ativacao-teste.onrender.com'){
+ if(['https://jm-financeiro-ativacao-teste.onrender.com','http://localhost','https://localhost','capacitor://localhost'].includes(origin)){
   res.setHeader('Access-Control-Allow-Origin',origin);
   res.setHeader('Vary','Origin');
   res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');
   res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');
  }
  if(req.method==='OPTIONS'){
-  res.writeHead(origin==='https://jm-financeiro-ativacao-teste.onrender.com'?204:403);return res.end();
+  res.writeHead(['https://jm-financeiro-ativacao-teste.onrender.com','http://localhost','https://localhost','capacitor://localhost'].includes(origin)?204:403);return res.end();
  }
  const respond=(code,obj)=>{res.writeHead(code);res.end(JSON.stringify(obj));};
  if(req.method==='GET'&&req.url==='/health')return respond(200,{service:'jm-financeiro-staging',readyForFinancialData:ready});
