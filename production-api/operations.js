@@ -27,6 +27,10 @@ export async function recordOperation(pool,{kind,input,idempotencyKey,actor}) {
    // Mesma trava utilizada nas transferências: impede alteração concorrente
    // do saldo da conta enquanto o lançamento é gravado.
    await client.query('SELECT id FROM accounts WHERE id=$1 AND establishment_id=$2 FOR UPDATE',[data.account_id,data.establishment_id]);
+   if(data.kind==='expense'){
+    const balance=await accountBalance(client,data.account_id,data.establishment_id);
+    if(BigInt(balance)<BigInt(data.amount_cents)) throw new Error('Saldo insuficiente ou conta inexistente');
+   }
    const q=await client.query(`INSERT INTO entries(id,establishment_id,kind,account_id,category_id,description,amount_cents)
     VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,establishment_id,kind,account_id,category_id,description,amount_cents,created_at`,
     [id,data.establishment_id,data.kind,data.account_id,data.category_id,data.description,data.amount_cents]);
@@ -34,12 +38,8 @@ export async function recordOperation(pool,{kind,input,idempotencyKey,actor}) {
   }else{
    // Serializa movimentações concorrentes na mesma origem; não permite saldo negativo.
    await client.query('SELECT id FROM accounts WHERE id=$1 AND establishment_id=$2 FOR UPDATE',[data.from_account_id,data.establishment_id]);
-   const balance=await client.query(`SELECT a.opening_cents
-    + COALESCE((SELECT SUM(CASE WHEN e.kind='income' THEN e.amount_cents ELSE -e.amount_cents END) FROM entries e WHERE e.account_id=a.id),0)
-    + COALESCE((SELECT SUM(t.amount_cents) FROM transfers t WHERE t.to_account_id=a.id),0)
-    - COALESCE((SELECT SUM(t.amount_cents) FROM transfers t WHERE t.from_account_id=a.id),0) AS balance_cents
-    FROM accounts a WHERE a.id=$1 AND a.establishment_id=$2`,[data.from_account_id,data.establishment_id]);
-   if(!balance.rows.length || BigInt(balance.rows[0].balance_cents)<BigInt(data.amount_cents)) throw new Error('Saldo insuficiente ou conta inexistente');
+   const balance=await accountBalance(client,data.from_account_id,data.establishment_id);
+   if(BigInt(balance)<BigInt(data.amount_cents)) throw new Error('Saldo insuficiente ou conta inexistente');
    const q=await client.query(`INSERT INTO transfers(id,establishment_id,from_account_id,to_account_id,description,amount_cents)
     VALUES($1,$2,$3,$4,$5,$6) RETURNING id,establishment_id,from_account_id,to_account_id,description,amount_cents,created_at`,
     [id,data.establishment_id,data.from_account_id,data.to_account_id,data.description,data.amount_cents]);
@@ -55,4 +55,14 @@ export async function recordOperation(pool,{kind,input,idempotencyKey,actor}) {
   try{await client.query('ROLLBACK');}catch{}
   throw error;
  }finally{client.release();}
+}
+
+async function accountBalance(client,accountId,establishmentId){
+ const balance=await client.query(`SELECT a.opening_cents
+    + COALESCE((SELECT SUM(CASE WHEN e.kind='income' THEN e.amount_cents ELSE -e.amount_cents END) FROM entries e WHERE e.account_id=a.id),0)
+    + COALESCE((SELECT SUM(t.amount_cents) FROM transfers t WHERE t.to_account_id=a.id),0)
+    - COALESCE((SELECT SUM(t.amount_cents) FROM transfers t WHERE t.from_account_id=a.id),0) AS balance_cents
+    FROM accounts a WHERE a.id=$1 AND a.establishment_id=$2`,[accountId,establishmentId]);
+ if(!balance.rows.length) throw new Error('Saldo insuficiente ou conta inexistente');
+ return balance.rows[0].balance_cents;
 }
