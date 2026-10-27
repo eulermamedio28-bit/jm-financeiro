@@ -32,3 +32,19 @@ test('não transmite sem autorização explícita e usa bearer apenas em HTTPS',
   assert.deepEqual(await cliente.consultarStatus(),{status:'ok'});
   assert.equal(chamadas,1);
 });
+
+test('bloqueia caminho inesperado, credencial com quebra de linha e backup excessivo', async () => {
+  assert.throws(()=>criarClientePonte({endpoint:'https://example.com/outro',obterToken:()=> 'a'.repeat(32)}),/HTTPS/);
+  let chamadas=0;
+  const cliente=criarClientePonte({
+    endpoint:'https://example.com',
+    obterToken:()=> 'credencial-invalida\\ncom-mais-de-16',
+    fetchImpl:async()=>{chamadas++;throw new Error('Não deveria conectar');}
+  });
+  await assert.rejects(cliente.consultarStatus(),/Credencial/);
+  assert.equal(chamadas,0);
+  const grande=vazio();
+  grande.dados.receitas=[{desc:'x'.repeat(2_000_001)}];
+  assert.throws(()=>cliente.enviarSnapshot(grande),/limite/);
+  assert.equal(chamadas,0);
+});
