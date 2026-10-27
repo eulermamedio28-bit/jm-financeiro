@@ -27,6 +27,14 @@ export function criarLancamentos(pool){
   if(item.tipo!==input.tipo||Number(item.valor_centavos)!==input.valor_centavos||item.descricao!==input.descricao.trim())throw Error('idempotency_conflict');
   return {created:false,lancamento:item};
  },
+ async resumo(accountId){
+  const {rows}=await pool.query(`SELECT
+   COALESCE(SUM(valor_centavos) FILTER (WHERE tipo='receita'),0)::text AS receitas_centavos,
+   COALESCE(SUM(valor_centavos) FILTER (WHERE tipo='despesa'),0)::text AS despesas_centavos,
+   COUNT(*)::integer AS quantidade
+   FROM jm_lancamentos WHERE account_id=$1::uuid`,[accountId]);
+  const x=rows[0];return {receitas_centavos:x.receitas_centavos,despesas_centavos:x.despesas_centavos,resultado_centavos:(BigInt(x.receitas_centavos)-BigInt(x.despesas_centavos)).toString(),quantidade:x.quantidade};
+ },
  async listar(accountId,limit=50){
   const {rows}=await pool.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid ORDER BY data DESC,criado_em DESC LIMIT $2',[accountId,Math.min(Math.max(limit,1),100)]);
   return rows;
