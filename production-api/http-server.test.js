@@ -10,9 +10,13 @@ test('HTTP development adapter exposes health and refuses missing bearer',async(
   const port=server.address().port;
   const health=await fetch('http://127.0.0.1:'+port+'/health');
   assert.equal(health.status,200);
+  assert.equal(health.headers.get('cache-control'),'no-store');
+  assert.equal(health.headers.get('referrer-policy'),'no-referrer');
+  assert.equal(health.headers.get('x-frame-options'),'DENY');
   assert.equal((await health.json()).mode,'development-only');
   const pilot=await fetch('http://127.0.0.1:'+port+'/pilot');
   assert.equal(pilot.status,200);
+  assert.equal(pilot.headers.get('x-frame-options'),'DENY');
   const html=await pilot.text();
   assert.match(html,/Novo lançamento de teste/);
   assert.match(html,/entry-form/);
