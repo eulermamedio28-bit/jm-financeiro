@@ -42,6 +42,7 @@ test('rolls back and releases connection when database fails', async () => {
   query: async (sql) => {
    calls.push(sql);
    if (sql.startsWith('SELECT fingerprint')) return {rows: []};
+   if (sql.includes('AS balance_cents')) return {rows:[{balance_cents:'1000'}]};
    if (sql.startsWith('INSERT INTO entries')) throw Error('database failure');
    return {rows: []};
   },
@@ -106,4 +107,18 @@ test('transfer checks source balance before inserting', async () => {
  await assert.rejects(recordOperation(pool,{kind:'transfer',input,idempotencyKey:'request_123456789',actor:'euler'}),/Saldo insuficiente/);
  assert.ok(!calls.some(sql=>sql.startsWith('INSERT INTO transfers')));
  assert.ok(calls.includes('ROLLBACK'));
+});
+
+test('expense exceeding available account balance rolls back without insert',async()=>{
+ const calls=[];
+ const pool={connect:async()=>({query:async sql=>{
+  calls.push(sql);
+  if(sql.startsWith('SELECT fingerprint'))return {rows:[]};
+  if(sql.includes('AS balance_cents'))return {rows:[{balance_cents:'200'}]};
+  return {rows:[]};
+ },release:()=>{}})};
+ const input={kind:'expense',amount_cents:500,description:'Compra',establishment_id:'11111111-1111-4111-8111-111111111111',account_id:'22222222-2222-4222-8222-222222222222',category_id:'33333333-3333-4333-8333-333333333333'};
+ await assert.rejects(recordOperation(pool,{kind:'entry',input,idempotencyKey:'expense_balance_123',actor:'euler'}),/Saldo insuficiente/);
+ assert.ok(calls.includes('ROLLBACK'));
+ assert.ok(!calls.some(sql=>sql.startsWith('INSERT INTO entries')));
 });
