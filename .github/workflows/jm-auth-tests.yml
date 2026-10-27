@@ -18,4 +18,4 @@ jobs:
         with:
           node-version: '22'
       - name: Testar portão de autenticação
-        run: node --test integration/login-gate.test.mjs
+        run: node --test integration/login-gate.test.mjs integration/authenticated-routes.test.mjs
