@@ -6,6 +6,7 @@ import {Client} from 'pg';
 const port=Number(process.env.PORT||10000);
 const testDbName='jm_financeiro_integracao_teste';
 async function run(){
+  let stage='initial';
   if(!process.env.DATABASE_URL)return 'not_configured';
   let url;
   try{url=new URL(process.env.DATABASE_URL);if(!['postgres:','postgresql:'].includes(url.protocol))return 'invalid_protocol';}
@@ -22,6 +23,7 @@ async function run(){
     if(tables.rowCount!==2)return 'schema_verification_failed';
     console.log('Test database schema: created_and_verified');
     // Fictional UUID; the transaction is rolled back even on successful checks.
+    stage='basic_transaction';
     const id='00000000-0000-4000-8000-000000000001';
     await client.query('BEGIN');
     try{
@@ -36,19 +38,23 @@ async function run(){
       const repository=criarRepositorioSnapshots(client);
       const otherId='00000000-0000-4000-8000-000000000002';
       const snapshot={app:'JM Financeiro',versao:2,exportadoEm:new Date().toISOString(),dados:{receitas:[],despesas:[],contas:[],movimentos:[],categorias:[]}};
+      stage='repository_first_save';
       const first=await repository.salvar(otherId,snapshot,0);
       if(first.conflict||Number(first.revision)!==1)throw new Error('first_save_failed');
+      stage='repository_isolation';
       const isolated=await repository.consultar('00000000-0000-4000-8000-000000000003');
       if(isolated!==null)throw new Error('account_isolation_failed');
+      stage='repository_stale_revision';
       const stale=await repository.salvar(otherId,snapshot,0);
       if(!stale.conflict)throw new Error('stale_revision_not_rejected');
+      stage='repository_second_save';
       const second=await repository.salvar(otherId,snapshot,1);
       if(second.conflict||Number(second.revision)!==2)throw new Error('revision_increment_failed');
       console.log('Test repository isolation and revision conflict: verified_rollback');
       return 'schema_and_repository_tests_ok';
     }finally{await client.query('ROLLBACK');}
   }catch(e){
-    console.error('Test database initialization failed:',String(e.code||'error').replace(/[^a-zA-Z0-9_]/g,''));
+    console.error('Test database initialization failed:',stage,String(e.code||'error').replace(/[^a-zA-Z0-9_]/g,''));
     return 'database_setup_failed';
   }finally{await client.end().catch(()=>{});}
 }
