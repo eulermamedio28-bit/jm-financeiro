@@ -11,6 +11,8 @@ test('gateway de protótipo falha fechado sem autenticação e sem banco', async
     assert.equal((await r.json()).readyForFinancialData,false);
     r=await fetch(url+'/v1/sync/status');
     assert.equal(r.status,503);
+    r=await fetch(url+'/v1/sync/status',{headers:{Authorization:'Bearer invalid-test-token-123456789'}});
+    assert.equal(r.status,503);
     r=await fetch(url+'/v1/sync',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({dados:{}})});
     assert.equal(r.status,503);
     assert.equal((await r.json()).error,'sync_not_implemented');
