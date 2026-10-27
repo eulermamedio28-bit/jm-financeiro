@@ -9,12 +9,18 @@ if(!config||!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl)||ty
 }else{
  const supabase=createClient(config.supabaseUrl,config.publishableKey,{auth:{detectSessionInUrl:false,autoRefreshToken:false,persistSession:false}});
  const url=new URL(location.href);
+ const fragment=new URLSearchParams(url.hash.slice(1));
  const code=url.searchParams.get('code');
  const tokenHash=url.searchParams.get('token_hash');
  const type=url.searchParams.get('type');
  try{
    if(code){
      const {error}=await supabase.auth.exchangeCodeForSession(code);
+     if(error)throw error;
+   }else if(fragment.has('access_token') && fragment.has('refresh_token') && ['invite','recovery'].includes(fragment.get('type'))){
+     const access_token=fragment.get('access_token'),refresh_token=fragment.get('refresh_token');
+     history.replaceState(null,'',location.pathname);
+     const {error}=await supabase.auth.setSession({access_token,refresh_token});
      if(error)throw error;
    }else if(tokenHash && ['invite','recovery'].includes(type)){
      const {error}=await supabase.auth.verifyOtp({token_hash:tokenHash,type});
