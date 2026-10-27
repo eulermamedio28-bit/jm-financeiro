@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {login,logout} from './auth-db.js';
-import {authenticatedCatalog} from './catalog.js';
+import {authenticatedCatalog,authenticatedEstablishments} from './catalog.js';
 import {authenticatedRecordOperation,authenticatedSummary} from './secure-operations.js';
 
 // Development-only HTTP adapter. Never bind to a public interface.
@@ -51,6 +51,10 @@ export function createFinancialHttpServer(pool){
     const token=bearer(req),data=await bodyJson(req);
     const result=await authenticatedRecordOperation(pool,{token,kind:data.kind,input:data.input,idempotencyKey:req.headers['idempotency-key']});
     return json(res,201,result);
+   }
+   if(req.method==='GET'&&path==='/api/establishments'){
+    const token=bearer(req);
+    return json(res,200,await authenticatedEstablishments(pool,{token}));
    }
    if(req.method==='GET'&&path==='/api/catalog'){
     const token=bearer(req);
