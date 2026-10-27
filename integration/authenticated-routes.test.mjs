@@ -36,3 +36,14 @@ test('conflito de revisão responde 409 e backup inválido responde 400',async()
   assert.equal((await rotas.executar({...base,body:{expectedRevision:0,snapshot:backup()}})).status,409);
   assert.equal(gravacoes,1);
 });
+
+test('identidade com identificador inválido não acessa o repositório',async()=>{
+  let acessos=0;
+  const rotas=criarRotasFinanceiras({
+    verifyAccessToken:async()=>({accountId:'identificador-invalido'}),
+    repository:{consultar:async()=>{acessos++;return null;},salvar:async()=>{acessos++;return {conflict:false};}}
+  });
+  const resposta=await rotas.executar({authorization:'Bearer valido',method:'GET',path:'/v1/sync'});
+  assert.equal(resposta.status,401);
+  assert.equal(acessos,0);
+});
