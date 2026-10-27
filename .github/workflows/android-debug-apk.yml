@@ -33,6 +33,10 @@ jobs:
       - name: Create Android project if missing
         run: |
           if [ ! -f android/gradlew ]; then
+            if [ -d android ]; then
+              echo "Projeto Android incompleto: pasta android existe sem gradlew." >&2
+              exit 1
+            fi
             npx cap add android
           fi
       - name: Sync Android web assets
