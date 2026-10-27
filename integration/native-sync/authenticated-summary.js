@@ -35,4 +35,4 @@ async function loadAuthenticatedSummary(accessToken, fetchImpl = fetch) {
   return parseSummary(await response.json());
 }
 
-module.exports = { parseSummary, loadAuthenticatedSummary };
+export { parseSummary, loadAuthenticatedSummary };
