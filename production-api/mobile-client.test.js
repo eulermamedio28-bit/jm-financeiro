@@ -25,3 +25,14 @@ test('mobile client keeps token in memory and clears on logout',async()=>{
  assert.equal(client.authenticated,false);
  await assert.rejects(client.summary('test'),/Sessão necessária/);
 });
+
+test('mobile client clears expired session after HTTP 401',async()=>{
+ const client=createMobileClient({baseUrl:'https://example.test/',fetchImpl:async(url)=>{
+  if(String(url).endsWith('/api/login')) return {ok:true,json:async()=>({token:'a'.repeat(64)})};
+  return {ok:false,status:401,json:async()=>({error:'Acesso negado'})};
+ }});
+ await client.login('senha-ficticia');
+ assert.equal(client.authenticated,true);
+ await assert.rejects(client.summary('11111111-1111-4111-8111-111111111111'),/Acesso negado/);
+ assert.equal(client.authenticated,false);
+});
