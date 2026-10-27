@@ -16,9 +16,16 @@ const server=http.createServer(async(req,res)=>{
  if(path==='/preview'&&req.method==='GET'){res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"});return res.end(readFileSync(new URL('./mobile-preview.html',import.meta.url)));}
  if(path==='/health'&&req.method==='GET')return send(res,200,{status:'ok',service:'jm-financeiro-mcp-v2',mode:'fictional-read-only',financialData:false});
  if(path!=='/mcp')return send(res,404,{error:'not_found'});
- if(req.method==='GET'){res.writeHead(405,{'allow':'POST, DELETE'});return res.end();}
+ if(req.method==='GET'){res.writeHead(405,{'allow':'POST, DELETE','cache-control':'no-store'});return res.end();}
  if(req.method==='DELETE')return send(res,200,{ok:true});
  if(req.method!=='POST')return send(res,405,{error:'method_not_allowed'});
+ // Streamable HTTP MCP clients advertise both JSON and SSE, even for JSON replies.
+ const accept=String(req.headers.accept||'');
+ if(accept && !(accept.includes('application/json') && accept.includes('text/event-stream')))
+   return send(res,406,{error:'not_acceptable',required:'application/json, text/event-stream'});
+ const version=req.headers['mcp-protocol-version'];
+ if(version && !['2025-03-26','2025-06-18','2025-11-25'].includes(String(version)))
+   return send(res,400,{error:'unsupported_protocol_version'});
  let body='';try{for await(const chunk of req){body+=chunk;if(body.length>32768)return send(res,413,{error:'too_large'});}
  const msg=JSON.parse(body);
  if(msg.jsonrpc!=='2.0'||typeof msg.method!=='string')return send(res,400,{error:'invalid_jsonrpc'});
