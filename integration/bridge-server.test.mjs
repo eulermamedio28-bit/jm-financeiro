@@ -14,5 +14,12 @@ test('gateway de protótipo falha fechado sem autenticação e sem banco', async
     r=await fetch(url+'/v1/sync',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({dados:{}})});
     assert.equal(r.status,503);
     assert.equal((await r.json()).error,'sync_not_implemented');
+    assert.equal(r.headers.get('access-control-allow-origin'),null);
+    r=await fetch(url+'/v1/sync',{method:'GET'});
+    assert.equal(r.status,503);
+    r=await fetch(url+'/v1/sync',{method:'OPTIONS'});
+    assert.equal(r.status,503);
+    r=await fetch(url+'/mcp',{method:'POST'});
+    assert.equal(r.status,404);
   } finally { await new Promise((resolve,reject)=>server.close(e=>e?reject(e):resolve())); }
 });
