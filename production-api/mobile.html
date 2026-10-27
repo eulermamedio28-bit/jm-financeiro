@@ -17,7 +17,7 @@ el('login-form').addEventListener('submit',async e=>{
 });
 el('refresh').addEventListener('click',async()=>{
  try{const establishmentId=el('establishment').value.trim();const [data,catalog]=await Promise.all([client.summary(establishmentId),client.catalog(establishmentId)]);fillSelect('entry-account',catalog.accounts);fillSelect('transfer-from',catalog.accounts);fillSelect('transfer-to',catalog.accounts);fillSelect('entry-category',catalog.categories);el('income').textContent=money(data.income_cents);el('expense').textContent=money(data.expense_cents);el('balance').textContent=money(data.balance_cents);message('Resumo, contas e categorias atualizados.');}
- catch{message('Não foi possível consultar. Verifique a sessão e o estabelecimento.')}
+ catch{handleError('Não foi possível consultar. Verifique o estabelecimento.')}
 });
 el('entry-form').addEventListener('submit',async e=>{
  e.preventDefault();
@@ -29,7 +29,7 @@ el('entry-form').addEventListener('submit',async e=>{
  if(!confirm('Confirmar lançamento FICTÍCIO de '+money(cents)+'?'))return;
  const key='mobile_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
  try{await client.record('entry',input,key);message('Lançamento fictício registrado.');el('entry-form').reset();el('refresh').click();}
- catch{message('Falha ao registrar. Confira os dados e a sessão.');}
+ catch{handleError('Falha ao registrar. Confira os dados.');}
 });
 el('transfer-form').addEventListener('submit',async e=>{
  e.preventDefault();
@@ -43,7 +43,7 @@ el('transfer-form').addEventListener('submit',async e=>{
  if(!confirm('Confirmar transferência FICTÍCIA de '+money(cents)+' entre contas?'))return;
  const key='transfer_mobile_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
  try{await client.record('transfer',input,key);message('Transferência fictícia registrada. Não altera receitas ou despesas consolidadas.');el('transfer-form').reset();el('refresh').click();}
- catch{message('Falha ao transferir. Confira as contas, saldo e sessão.');}
+ catch{handleError('Falha ao transferir. Confira as contas e o saldo.');}
 });
 el('logout').addEventListener('click',async()=>{
  try{await client.logout()}catch{}finally{el('dashboard').style.display='none';el('login').style.display='block';message('Sessão encerrada.')}
