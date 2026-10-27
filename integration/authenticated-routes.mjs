@@ -28,7 +28,7 @@ export function criarRotasFinanceiras({verifyAccessToken,repository,syncEnabled=
       return snapshot ? {status:200,body:snapshot} : {status:404,body:{error:'snapshot_not_found'}};
     }
     if(path==='/v1/sync' && method==='POST') {
-      if(!body || !Number.isSafeInteger(body.expectedRevision) || body.expectedRevision<0)
+      if(!body || body.schemaVersion!==2 || !Number.isSafeInteger(body.expectedRevision) || body.expectedRevision<0)
         return {status:400,body:{error:'invalid_revision'}};
       try { validarSnapshot(body.snapshot); }
       catch { return {status:400,body:{error:'invalid_snapshot'}}; }
