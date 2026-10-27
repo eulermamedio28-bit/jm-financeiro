@@ -38,6 +38,7 @@ export function criarClientePonte({ endpoint, obterToken, fetchImpl = fetch }) {
   }
   return Object.freeze({
     consultarStatus: () => requisitar('/v1/sync/status'),
+    consultarSnapshot: () => requisitar('/v1/sync'),
     // Apenas envio manual explícito; não conectar a eventos de salvar dados.
     enviarSnapshot: (snapshot, expectedRevision) => {
       validarSnapshot(snapshot);
