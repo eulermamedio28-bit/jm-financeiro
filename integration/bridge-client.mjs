@@ -4,7 +4,7 @@ import { validarSnapshot } from './snapshot-readonly.mjs';
 
 export function criarClientePonte({ endpoint, obterToken, fetchImpl = fetch }) {
   const url = new URL(endpoint);
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash)
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.pathname !== '/')
     throw new Error('Endpoint HTTPS inválido');
   if (typeof obterToken !== 'function') throw new Error('Autenticação obrigatória');
   if (typeof fetchImpl !== 'function') throw new Error('Transporte indisponível');
@@ -41,7 +41,9 @@ export function criarClientePonte({ endpoint, obterToken, fetchImpl = fetch }) {
     // Apenas envio manual explícito; não conectar a eventos de salvar dados.
     enviarSnapshot: (snapshot) => {
       validarSnapshot(snapshot);
-      return requisitar('/v1/sync', {method:'POST',body:{schemaVersion:2,snapshot}});
+      const payload = {schemaVersion:2,snapshot};
+      if (JSON.stringify(payload).length > 2_000_000) throw new Error('Backup excede o limite de envio');
+      return requisitar('/v1/sync', {method:'POST',body:payload});
     }
   });
 }
