@@ -43,6 +43,9 @@ test('HTTP with PostgreSQL: login, income, summary, logout',async t=>{
   const totals=await summary.json();
   assert.equal(totals.income_cents,'2800');
   assert.equal(totals.balance_cents,'12800');
+  const overdraft=await fetch(base+'/api/operations',{method:'POST',headers:{...headers,'idempotency-key':'http_overdraft_123456'},body:JSON.stringify({kind:'entry',input:{kind:'expense',establishment_id:establishment,account_id:account,category_id:category,description:'Despesa acima do saldo',amount_cents:20000}})});
+  assert.equal(overdraft.status,409);
+  assert.match((await overdraft.json()).error,/Saldo insuficiente/);
   const logout=await fetch(base+'/api/logout',{method:'POST',headers});
   assert.equal(logout.status,200);
   const denied=await fetch(base+'/api/summary?establishmentId='+establishment,{headers});
