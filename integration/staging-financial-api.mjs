@@ -8,13 +8,14 @@ import {criarRepositorioSnapshots} from './postgres-repository.mjs';
 import {criarRotasFinanceiras} from './authenticated-routes.mjs';
 import {prepararLancamentos,criarLancamentos} from './ledger-staging.mjs';
 import {executarMcp} from './mcp-financial.mjs';
+import {prepararOAuth,criarOAuth,oauthMetadata,resourceMetadata} from './oauth-bridge.mjs';
 const port=Number(process.env.PORT||10000);
 const dbName='jm_financeiro_integracao_teste';
 const supabaseUrl=process.env.SUPABASE_URL?.replace(/\/$/,'');
 const allowedEmail=process.env.JM_ALLOWED_EMAIL?.trim().toLowerCase();
 const enabled=process.env.JM_ENABLE_FINANCIAL_API==='true';
 const pool=new Pool({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:8000,max:3});
-let routes=null,ledger=null,verifyToken=null,ready=false;
+let routes=null,ledger=null,verifyToken=null,oauth=null,ready=false;
 async function initialize(){
  if(!enabled){console.log('Financial API disabled');return;}
  if(!supabaseUrl||!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)||!allowedEmail||!process.env.DATABASE_URL)throw Error('Missing required configuration');
@@ -33,6 +34,7 @@ async function initialize(){
  routes=criarRotasFinanceiras({verifyAccessToken,repository:criarRepositorioSnapshots(pool),syncEnabled:true});
  await prepararLancamentos(pool);
  ledger=criarLancamentos(pool);verifyToken=verifyAccessToken;
+ await prepararOAuth(pool);oauth=criarOAuth(pool,verifyAccessToken);
  ready=true;
  console.log('Staging financial API ready');
 }
@@ -52,6 +54,33 @@ http.createServer(async(req,res)=>{
  const respond=(code,obj)=>{res.writeHead(code);res.end(JSON.stringify(obj));};
  if(req.method==='GET'&&req.url==='/health')return respond(200,{service:'jm-financeiro-staging',readyForFinancialData:ready});
  if(!ready||!routes)return respond(503,{error:'api_not_ready'});
+ const pathname=new URL(req.url,'http://localhost').pathname;
+ if(req.method==='GET'&&pathname==='/.well-known/oauth-authorization-server')return respond(200,oauthMetadata);
+ if(req.method==='GET'&&pathname==='/.well-known/oauth-protected-resource')return respond(200,resourceMetadata);
+ if(req.method==='GET'&&pathname==='/.well-known/oauth-protected-resource/mcp')return respond(200,resourceMetadata);
+ if(req.method==='GET'&&pathname==='/oauth/public-config'){
+  try{const cfg=await(await fetch('https://jm-financeiro-ativacao-teste.onrender.com/config.json')).json();return respond(200,{supabaseUrl:cfg.supabaseUrl,publishableKey:cfg.publishableKey});}
+  catch{return respond(503,{error:'public_config_unavailable'});}
+ }
+ if(req.method==='GET'&&pathname==='/oauth/authorize'){
+  const u=new URL(req.url,'http://localhost');
+  if(u.searchParams.get('response_type')!=='code'||u.searchParams.get('code_challenge_method')!=='S256')return respond(400,{error:'unsupported_oauth_request'});
+  try{const page=await readFile(new URL('./oauth-consent.html',import.meta.url),'utf8');res.setHeader('Content-Type','text/html; charset=utf-8');res.writeHead(200);return res.end(page);}
+  catch{return respond(500,{error:'consent_unavailable'});}
+ }
+ if(req.method==='POST'&&['/oauth/consent','/oauth/token'].includes(pathname)){
+  try{
+   let data='';
+   for await(const chunk of req){data+=chunk;if(data.length>10000)return respond(413,{error:'payload_too_large'});}
+   const body=pathname==='/oauth/token'?Object.fromEntries(new URLSearchParams(data)):JSON.parse(data);
+   const result=pathname==='/oauth/token'?await oauth.trocar(body):{code:await oauth.autorizar(body)};
+   return respond(200,result);
+  }catch{return respond(400,{error:'invalid_grant_or_request'});}
+ }
+ if(req.method==='GET'&&pathname==='/mcp'){
+  res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://jm-financeiro-db-private-test.onrender.com/.well-known/oauth-protected-resource"');
+  return respond(401,{error:'unauthorized'});
+ }
  if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
@@ -64,7 +93,7 @@ http.createServer(async(req,res)=>{
  try{
   if(req.url==='/mcp'){
    if(req.method!=='POST')return respond(405,{error:'method_not_allowed'});
-   const result=await executarMcp({body,authorization:req.headers.authorization,verifyToken,ledger});
+   const result=await executarMcp({body,authorization:req.headers.authorization,verifyToken:oauth.verificarBearer,ledger});
    if(result.body===null){res.writeHead(result.status);return res.end();}
    return respond(result.status,result.body);
   }
