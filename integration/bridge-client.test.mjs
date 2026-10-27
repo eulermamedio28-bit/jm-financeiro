@@ -73,3 +73,16 @@ test('envio exige revisão e inclui expectedRevision no corpo',async()=>{
   assert.deepEqual(await cliente.enviarSnapshot(backup,0),{revision:1});
   assert.equal(chamadas,1);
 });
+
+test('limite de 2 MB considera bytes UTF-8 e não apenas caracteres',()=>{
+  let chamadas=0;
+  const cliente=criarClientePonte({
+    endpoint:'https://example.com',
+    obterToken:()=> 'credencial-valida-de-teste',
+    fetchImpl:async()=>{chamadas++;throw new Error('Envio indevido');}
+  });
+  const comAcentos=vazio();
+  comAcentos.dados.receitas=[{descricao:'á'.repeat(1_100_000)}];
+  assert.throws(()=>cliente.enviarSnapshot(comAcentos,0),/limite/);
+  assert.equal(chamadas,0);
+});
