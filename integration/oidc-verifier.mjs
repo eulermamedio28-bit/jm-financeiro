@@ -6,7 +6,8 @@ import {createRemoteJWKSet,jwtVerify} from 'jose';
 export function criarVerificadorOidc({issuer,audience,jwksUri}={}){
   if(typeof issuer!=='string'||!issuer.startsWith('https://'))throw new Error('OIDC issuer HTTPS obrigatório');
   if(typeof audience!=='string'||!audience.trim())throw new Error('OIDC audience obrigatório');
-  const jwksUrl=new URL(jwksUri||new URL('/.well-known/jwks.json',issuer));
+  if(typeof jwksUri!=='string'||!jwksUri)throw new Error('JWKS URI explícita obrigatória');
+  const jwksUrl=new URL(jwksUri);
   if(jwksUrl.protocol!=='https:')throw new Error('JWKS HTTPS obrigatório');
   const jwks=createRemoteJWKSet(jwksUrl);
   return async function verificarToken(token){
