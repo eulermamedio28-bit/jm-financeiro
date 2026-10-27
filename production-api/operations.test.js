@@ -29,6 +29,7 @@ test('writes entry and audit in one transaction', async () => {
  const result = await recordOperation(pool, {kind: 'entry', input, idempotencyKey: 'request_123456789', actor: 'euler'});
  assert.equal(result.id, 'saved');
  assert.ok(calls.includes('BEGIN'));
+ assert.ok(calls.some(sql=>sql.includes('FROM accounts WHERE id=$1 AND establishment_id=$2 FOR UPDATE')));
  assert.ok(calls.includes('COMMIT'));
  assert.ok(calls.some(sql => sql.startsWith('INSERT INTO audit')));
  assert.ok(calls.some(sql => sql.startsWith('INSERT INTO request_log')));
