@@ -39,9 +39,11 @@ export function criarClientePonte({ endpoint, obterToken, fetchImpl = fetch }) {
   return Object.freeze({
     consultarStatus: () => requisitar('/v1/sync/status'),
     // Apenas envio manual explícito; não conectar a eventos de salvar dados.
-    enviarSnapshot: (snapshot) => {
+    enviarSnapshot: (snapshot, expectedRevision) => {
       validarSnapshot(snapshot);
-      const payload = {schemaVersion:2,snapshot};
+      if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)
+        throw new Error('Revisão esperada obrigatória');
+      const payload = {schemaVersion:2,snapshot,expectedRevision};
       if (JSON.stringify(payload).length > 2_000_000) throw new Error('Backup excede o limite de envio');
       return requisitar('/v1/sync', {method:'POST',body:payload});
     }
