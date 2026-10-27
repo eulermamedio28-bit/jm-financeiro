@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import {login,logout} from './auth-db.js';
 import {authenticatedRecordOperation,authenticatedSummary} from './secure-operations.js';
@@ -29,6 +30,12 @@ export function createFinancialHttpServer(pool){
  return createServer(async(req,res)=>{
   try{
    const path=new URL(req.url,'http://localhost').pathname;
+   if(req.method==='GET'&&['/pilot','/mobile-client.js'].includes(path)){
+    const file=path==='/pilot'?'mobile.html':'mobile-client.js';
+    const type=path==='/pilot'?'text/html; charset=utf-8':'text/javascript; charset=utf-8';
+    res.writeHead(200,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"});
+    return res.end(readFileSync(new URL('./'+file,import.meta.url)));
+   }
    if(req.method==='GET'&&path==='/health') return json(res,200,{status:'ok',mode:'development-only'});
    if(req.method==='POST'&&path==='/api/login'){
     const data=await bodyJson(req);
