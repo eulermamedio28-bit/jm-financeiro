@@ -29,7 +29,9 @@ const htmlPath = path.join("www", "index.html");
 let html = fs.readFileSync(htmlPath, "utf8");
 if (!html.includes('id="jm-online-panel-link"')) {
   const link = '<a id="jm-online-panel-link" href="' + panelUrl + '" target="_blank" rel="noopener noreferrer" aria-label="Abrir painel financeiro sincronizado" style="position:fixed;right:14px;bottom:18px;z-index:2147483640;background:#d7ab5c;color:#250a10;padding:12px 15px;border-radius:14px;font:700 14px system-ui;text-decoration:none;box-shadow:0 3px 18px #0009">Painel online</a>';
-  html = html.replace(/<\\/body>/i, link + '</body>');
+  const closeTag = html.toLowerCase().lastIndexOf('</body>');
+  if (closeTag < 0) throw new Error('HTML principal sem fechamento de body');
+  html = html.slice(0, closeTag) + link + html.slice(closeTag);
   fs.writeFileSync(htmlPath, html);
 }
 
