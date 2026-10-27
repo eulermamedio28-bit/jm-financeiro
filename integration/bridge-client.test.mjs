@@ -48,3 +48,4 @@ test('bloqueia caminho inesperado, credencial com quebra de linha e backup exces
   assert.throws(()=>cliente.enviarSnapshot(grande),/limite/);
   assert.equal(chamadas,0);
 });
+
