@@ -30,6 +30,11 @@ test('HTTP with PostgreSQL: login, income, summary, logout',async t=>{
   const operation={kind:'entry',input:{kind:'income',establishment_id:establishment,account_id:account,category_id:category,description:'Venda teste',amount_cents:2800}};
   const created=await fetch(base+'/api/operations',{method:'POST',headers,body:JSON.stringify(operation)});
   assert.equal(created.status,201);
+  const catalog=await fetch(base+'/api/catalog?establishmentId='+establishment,{headers});
+  assert.equal(catalog.status,200);
+  const lists=await catalog.json();
+  assert.equal(lists.accounts[0].name,'Caixa');
+  assert.equal(lists.categories[0].name,'Vendas');
   const summary=await fetch(base+'/api/summary?establishmentId='+establishment,{headers});
   assert.equal(summary.status,200);
   const totals=await summary.json();
