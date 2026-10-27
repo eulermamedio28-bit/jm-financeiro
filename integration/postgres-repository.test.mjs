@@ -26,7 +26,7 @@ test('gravação usa parâmetros e detecta conflito de revisão',async()=>{
   assert.match(chamadas[0][0],/INSERT INTO jm_accounts/);
   assert.match(chamadas[0][0],/INSERT INTO jm_snapshots/);
   assert.equal(chamadas[0][1][0],conta);
-  assert.equal(chamadas[0][1][2],0);
+  assert.equal(chamadas[0][1].length,2); // Initial INSERT binds account and payload; revision 0 is encoded in SQL.
   assert.equal(JSON.parse(chamadas[0][1][1]).app,'JM Financeiro');
 });
 test('rejeita revisão e backup excessivo antes de gravar',async()=>{
