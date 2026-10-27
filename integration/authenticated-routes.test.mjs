@@ -85,3 +85,22 @@ test('rejeita versão de protocolo ausente ou incompatível',async()=>{
   }
   assert.equal(gravacoes,0);
 });
+
+test('grava e consulta lançamento de teste por revisão em repositório simulado',async()=>{
+ let saved=null,revision=0;
+ const rotas=criarRotasFinanceiras({syncEnabled:true,
+  verifyAccessToken:async()=>({accountId:conta}),
+  repository:{
+   consultar:async()=>saved&&{payload:saved,revision},
+   salvar:async(_id,snapshot,expected)=>{if(expected!==revision)return {conflict:true};saved=snapshot;revision++;return {conflict:false,revision};}
+  }
+ });
+ const base={authorization:'Bearer valido',path:'/v1/sync'};
+ assert.equal((await rotas.executar({...base,method:'GET'})).status,404);
+ const created=await rotas.executar({...base,method:'POST',body:{schemaVersion:2,expectedRevision:0,snapshot:backup()}});
+ assert.equal(created.status,200);
+ assert.equal(created.body.revision,1);
+ const found=await rotas.executar({...base,method:'GET'});
+ assert.equal(found.status,200);
+ assert.deepEqual(found.body.payload,backup());
+});
