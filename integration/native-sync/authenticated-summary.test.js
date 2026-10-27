@@ -1,5 +1,5 @@
-const assert = require('node:assert/strict');
-const {parseSummary, loadAuthenticatedSummary} = require('./authenticated-summary.js');
+import assert from 'node:assert/strict';
+import {parseSummary, loadAuthenticatedSummary} from './authenticated-summary.js';
 const a = parseSummary({receitas_centavos:0, despesas_centavos:30001, resultado_centavos:-30001});
 assert.equal(a.resultadoCentavos,-30001);
 assert.equal(a.saldoContasCentavos,null);
