@@ -11,6 +11,10 @@ test('mobile pilot defines session error handler and prevents duplicate submissi
  const html=readFileSync(new URL('./mobile.html',import.meta.url),'utf8');
  assert.match(html,/const handleError=/);
  assert.match(html,/const withBusy=/);
+ assert.match(html,/const pendingKeys=new Map\(\)/);
+ assert.match(html,/operationKey\('entry',input\)/);
+ assert.match(html,/operationKey\('transfer',input\)/);
+ assert.match(html,/pendingKeys\.delete\(fingerprint\)/);
  assert.match(html,/button\.disabled=true/);
  assert.match(html,/withBusy\(el\('entry-form'\)/);
  assert.match(html,/withBusy\(el\('transfer-form'\)/);
