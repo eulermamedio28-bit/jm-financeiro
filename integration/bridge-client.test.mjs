@@ -38,7 +38,7 @@ test('bloqueia caminho inesperado, credencial com quebra de linha e backup exces
   let chamadas=0;
   const cliente=criarClientePonte({
     endpoint:'https://example.com',
-    obterToken:()=> 'credencial-invalida\\ncom-mais-de-16',
+    obterToken:()=> 'credencial-invalida' + String.fromCharCode(10) + 'com-mais-de-16',
     fetchImpl:async()=>{chamadas++;throw new Error('Não deveria conectar');}
   });
   await assert.rejects(cliente.consultarStatus(),/Credencial/);
