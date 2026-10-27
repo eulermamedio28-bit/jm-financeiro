@@ -17,6 +17,7 @@ test('recusa credenciais ausentes ou inválidas',async()=>{
 test('consulta usa conta do token e não do corpo enviado',async()=>{
   const contas=[];
   const rotas=criarRotasFinanceiras({
+    syncEnabled:true,
     verifyAccessToken:async()=>({accountId:conta}),
     repository:{consultar:async id=>{contas.push(id);return {revision:1,payload:backup()};},salvar:async()=>({conflict:false})}
   });
@@ -27,6 +28,7 @@ test('consulta usa conta do token e não do corpo enviado',async()=>{
 test('conflito de revisão responde 409 e backup inválido responde 400',async()=>{
   let gravacoes=0;
   const rotas=criarRotasFinanceiras({
+    syncEnabled:true,
     verifyAccessToken:async()=>({accountId:conta}),
     repository:{consultar:async()=>null,salvar:async()=>{gravacoes++;return {conflict:true};}}
   });
@@ -56,4 +58,16 @@ test('status permanece desativado enquanto sincronização real não está impla
   const resposta=await rotas.executar({authorization:'Bearer valido',method:'GET',path:'/v1/sync/status'});
   assert.equal(resposta.status,200);
   assert.equal(resposta.body.syncEnabled,false);
+});
+
+test('bloqueia leitura e escrita por padrão, mesmo com token válido',async()=>{
+  let acessos=0;
+  const rotas=criarRotasFinanceiras({
+    verifyAccessToken:async()=>({accountId:conta}),
+    repository:{consultar:async()=>{acessos++;return null;},salvar:async()=>{acessos++;return {conflict:false};}}
+  });
+  const base={authorization:'Bearer valido',path:'/v1/sync'};
+  assert.equal((await rotas.executar({...base,method:'GET'})).status,503);
+  assert.equal((await rotas.executar({...base,method:'POST',body:{expectedRevision:0,snapshot:backup()}})).status,503);
+  assert.equal(acessos,0);
 });
