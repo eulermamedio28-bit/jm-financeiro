@@ -47,3 +47,13 @@ test('identidade com identificador inválido não acessa o repositório',async()
   assert.equal(resposta.status,401);
   assert.equal(acessos,0);
 });
+
+test('status permanece desativado enquanto sincronização real não está implantada',async()=>{
+  const rotas=criarRotasFinanceiras({
+    verifyAccessToken:async()=>({accountId:conta}),
+    repository:{consultar:async()=>null,salvar:async()=>({conflict:false})}
+  });
+  const resposta=await rotas.executar({authorization:'Bearer valido',method:'GET',path:'/v1/sync/status'});
+  assert.equal(resposta.status,200);
+  assert.equal(resposta.body.syncEnabled,false);
+});
