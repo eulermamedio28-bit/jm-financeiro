@@ -10,6 +10,8 @@ const el=id=>document.getElementById(id);
 const money=cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(cents)/100);
 const message=text=>el('status').textContent=text;
 const handleError=(fallback,error)=>{if(!client.authenticated){el('dashboard').style.display='none';el('login').style.display='block';message('Sessão encerrada. Entre novamente.');return;}message(error?.message||fallback);};
+const pendingKeys=new Map();
+const operationKey=(kind,input)=>{const fingerprint=JSON.stringify({kind,input});if(!pendingKeys.has(fingerprint))pendingKeys.set(fingerprint,'mobile_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join(''));return {fingerprint,key:pendingKeys.get(fingerprint)};};
 const withBusy=async(form,operation)=>{const button=form.querySelector('button[type="submit"]');if(button.disabled)return;button.disabled=true;try{await operation();}finally{button.disabled=false;}};
 const fillSelect=(id,items)=>{const select=el(id);select.replaceChildren(new Option('Selecione...', ''));for(const item of items)select.add(new Option(item.name,item.id));};
 el('login-form').addEventListener('submit',async e=>{
@@ -29,9 +31,9 @@ el('entry-form').addEventListener('submit',async e=>{
  if(!Number.isSafeInteger(cents)||cents<=0){message('Valor inválido.');return;}
  const input={kind:el('entry-kind').value,establishment_id:el('establishment').value.trim(),account_id:el('entry-account').value.trim(),category_id:el('entry-category').value.trim(),description:el('entry-description').value.trim(),amount_cents:cents};
  if(!confirm('Confirmar lançamento FICTÍCIO de '+money(cents)+'?'))return;
- const key='mobile_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
+ const {fingerprint,key}=operationKey('entry',input);
  await withBusy(el('entry-form'),async()=>{
-  try{await client.record('entry',input,key);message('Lançamento fictício registrado.');el('entry-form').reset();el('refresh').click();}
+  try{await client.record('entry',input,key);pendingKeys.delete(fingerprint);message('Lançamento fictício registrado.');el('entry-form').reset();el('refresh').click();}
   catch(error){handleError('Falha ao registrar. Confira os dados.',error);}
  });
 });
@@ -45,13 +47,13 @@ el('transfer-form').addEventListener('submit',async e=>{
  if(!Number.isSafeInteger(cents)||cents<=0){message('Valor inválido.');return;}
  const input={establishment_id:el('establishment').value.trim(),from_account_id:from,to_account_id:to,description:el('transfer-description').value.trim(),amount_cents:cents};
  if(!confirm('Confirmar transferência FICTÍCIA de '+money(cents)+' entre contas?'))return;
- const key='transfer_mobile_'+Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
+ const {fingerprint,key}=operationKey('transfer',input);
  await withBusy(el('transfer-form'),async()=>{
-  try{await client.record('transfer',input,key);message('Transferência fictícia registrada. Não altera receitas ou despesas consolidadas.');el('transfer-form').reset();el('refresh').click();}
+  try{await client.record('transfer',input,key);pendingKeys.delete(fingerprint);message('Transferência fictícia registrada. Não altera receitas ou despesas consolidadas.');el('transfer-form').reset();el('refresh').click();}
   catch(error){handleError('Falha ao transferir. Confira as contas e o saldo.',error);}
  });
 });
 el('logout').addEventListener('click',async()=>{
- try{await client.logout()}catch{}finally{el('dashboard').style.display='none';el('login').style.display='block';message('Sessão encerrada.')}
+ try{await client.logout()}catch{}finally{pendingKeys.clear();el('dashboard').style.display='none';el('login').style.display='block';message('Sessão encerrada.')}
 });
 </script></body></html>
