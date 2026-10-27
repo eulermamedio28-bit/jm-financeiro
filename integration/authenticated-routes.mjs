@@ -3,7 +3,8 @@
 // a server-derived accountId. Never accept accountId from request payload.
 import { validarSnapshot } from './snapshot-readonly.mjs';
 
-export function criarRotasFinanceiras({verifyAccessToken,repository}) {
+export function criarRotasFinanceiras({verifyAccessToken,repository,syncEnabled=false}) {
+  if(typeof syncEnabled!=='boolean') throw new Error('Configuração de sincronização inválida');
   if(typeof verifyAccessToken!=='function') throw new Error('Verificador de identidade obrigatório');
   if(!repository || typeof repository.consultar!=='function' || typeof repository.salvar!=='function')
     throw new Error('Repositório obrigatório');
@@ -19,7 +20,9 @@ export function criarRotasFinanceiras({verifyAccessToken,repository}) {
       return {status:401,body:{error:'unauthorized'}};
 
     if(path==='/v1/sync/status' && method==='GET')
-      return {status:200,body:{syncEnabled:false,accountAuthenticated:true,reason:'deployment_not_ready'}};
+      return {status:200,body:{syncEnabled,accountAuthenticated:true,...(syncEnabled?{}:{reason:'deployment_not_ready'})}};
+    if(path==='/v1/sync' && !syncEnabled)
+      return {status:503,body:{error:'sync_not_enabled'}};
     if(path==='/v1/sync' && method==='GET') {
       const snapshot=await repository.consultar(accountId);
       return snapshot ? {status:200,body:snapshot} : {status:404,body:{error:'snapshot_not_found'}};
