@@ -42,7 +42,7 @@ async function refreshInvoices(){
    const card=document.createElement('div');card.style.cssText='padding:10px 0;border-top:1px solid #72505a;overflow-wrap:anywhere';
    const title=document.createElement('strong');title.textContent=String(item.cartao||'Cartão')+' · '+money(open)+' pendente';
    const detail=document.createElement('div');
-   const due=typeof item.vencimento==='string'&&/^\\d{4}-\\d{2}-\\d{2}/.test(item.vencimento)?item.vencimento.slice(0,10).split('-').reverse().join('/'):'não informado';
+   const due=typeof item.vencimento==='string'&&/^\d{4}-\d{2}-\d{2}/.test(item.vencimento)?item.vencimento.slice(0,10).split('-').reverse().join('/'):'não informado';
    detail.textContent='Vencimento: '+due+' · Total: '+money(total)+' · '+(open===0?'Quitada':'A pagar');
    card.append(title,detail);list.append(card);
   }
