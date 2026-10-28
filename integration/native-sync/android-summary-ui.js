@@ -3,6 +3,7 @@
 const API='https://jm-financeiro-db-private-test.onrender.com';
 const $=id=>document.getElementById(id);
 const money=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const cents=v=>{const n=typeof v==='string'&&/^-?\d+$/.test(v)?Number(v):v;if(!Number.isSafeInteger(n))throw Error('Valor monetário inválido no servidor.');return n;};
 const panel=document.createElement('section');
 panel.id='jm-sync-panel';panel.style.cssText='margin:16px 0;padding:16px;border:1px solid #b28b4a;border-radius:14px;background:#260d13;color:#f5e5c7;font:14px system-ui';
 panel.innerHTML='<h2 style="margin:0 0 8px">Painel financeiro online · dados do servidor</h2><p id="jm-sync-status">Entre com sua conta para consultar os lançamentos online. Os dados deste aparelho não serão modificados.</p><form id="jm-sync-form"><input id="jm-sync-email" type="email" autocomplete="username" placeholder="E-mail" required style="width:100%;padding:10px;margin:5px 0"><input id="jm-sync-password" type="password" autocomplete="current-password" placeholder="Senha" required style="width:100%;padding:10px;margin:5px 0"><button type="submit" style="padding:10px">Consultar servidor</button></form><div id="jm-sync-values" aria-live="polite"></div><button type="button" id="jm-sync-refresh" hidden style="padding:10px;margin-top:8px">Atualizar valores</button><button type="button" id="jm-sync-exit" hidden style="padding:10px;margin:8px">Sair</button>';
@@ -16,7 +17,7 @@ async function refresh(){
   if(r.status===401){token=null;throw Error('Sessão expirada. Entre novamente.')}
   if(!r.ok)throw Error('Servidor indisponível (HTTP '+r.status+').');
   const d=await r.json();
-  const a=[d.receitas_centavos,d.despesas_centavos,d.resultado_centavos];
+  const a=[cents(d.receitas_centavos),cents(d.despesas_centavos),cents(d.resultado_centavos)];
   if(!a.every(Number.isSafeInteger)||a[2]!==a[0]-a[1])throw Error('Dados inconsistentes no servidor.');
   const values=$('jm-sync-values');values.replaceChildren();
   values.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:12px 0';
