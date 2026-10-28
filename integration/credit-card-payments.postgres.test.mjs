@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
-import pg from 'pg';
 import {prepararLancamentos,criarLancamentos} from './ledger-staging.mjs';
 import {prepararCartoes,criarCartoes} from './credit-card-purchases.mjs';
 import {prepararPagamentosFatura,criarPagamentosFatura} from './credit-card-payments.mjs';
 
-if(process.env.JM_TEST_ISOLATED_DB!=='true'||!process.env.DATABASE_URL?.includes('localhost'))throw Error('Refusing non-local test database');
+if(process.env.JM_TEST_ISOLATED_DB!=='true'){
+ console.log('SKIP: teste PostgreSQL executado somente na rotina isolada.');
+} else {
+ if(!process.env.DATABASE_URL?.includes('localhost'))throw Error('Refusing non-local test database');
+ const {default:pg}=await import('pg');
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL});
 try {
  await pool.query(await readFile(new URL('./postgres-schema.sql',import.meta.url),'utf8'));
@@ -34,3 +37,5 @@ try {
  assert.equal((await ledger.resumo(accountId)).quantidade,1);
  console.log('PASSOU: PostgreSQL isolado, pagamento, baixa, resumo, rollback e idempotencia.');
 } finally {await pool.end();}
+
+}
