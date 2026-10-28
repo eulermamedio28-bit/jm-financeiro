@@ -7,7 +7,7 @@
     "build": "node build.js",
     "android:sync": "npx cap sync android",
     "build:verify": "npm run build && node scripts/verify-online-bridge.js && node scripts/verify-android-summary.js && npm run test:native-sync",
-    "test:native-sync": "node integration/native-sync/authenticated-summary.test.js && node integration/native-sync/account-balances.test.js && node integration/account-reconciliation.test.mjs && node integration/credit-card-purchases.test.mjs"
+    "test:native-sync": "node integration/native-sync/authenticated-summary.test.js && node integration/native-sync/account-balances.test.js && node integration/account-reconciliation.test.mjs && node integration/credit-card-purchases.test.mjs && node integration/credit-card-payment-validation.test.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",
