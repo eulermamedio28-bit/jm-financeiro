@@ -1,0 +1,42 @@
+name: Testar pagamentos PostgreSQL isolado
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev/jm-financeiro-integracao-segura
+    paths:
+      - 'integration/credit-card-payments*'
+      - 'integration/credit-card-purchases.mjs'
+      - 'integration/ledger-staging.mjs'
+      - '.github/workflows/test-payments-postgres.yml'
+jobs:
+  payment-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jm_test
+          POSTGRES_PASSWORD: test_only_ci
+          POSTGRES_DB: jm_financeiro_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jm_test -d jm_financeiro_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias da API
+        run: npm install --prefix integration
+      - name: Executar testes sem dados reais
+        env:
+          JM_TEST_ISOLATED_DB: 'true'
+          DATABASE_URL: postgresql://jm_test:test_only_ci@localhost:5432/jm_financeiro_ci
+        run: |
+          node integration/credit-card-payment-validation.test.mjs
+          node integration/credit-card-payments.postgres.test.mjs
