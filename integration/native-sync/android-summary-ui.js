@@ -38,7 +38,7 @@ function paymentField(label,type,name){
  wrapper.append(input);return {wrapper,input};
 }
 const cardField=paymentField('Cartão','text','cartao'),dueField=paymentField('Vencimento','date','vencimento'),amountField=paymentField('Valor total (R$)','number','valor'),accountField=paymentField('Conta de saída','text','conta'),dateField=paymentField('Data do pagamento','date','data_pagamento');
-amountField.input.min='0.01';amountField.input.step='0.01';dateField.input.value=new Date().toLocaleDateString('en-CA');
+amountField.input.min='0.01';amountField.input.step='0.01';dateField.input.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 const paymentButton=document.createElement('button');paymentButton.type='submit';paymentButton.textContent='Registrar pagamento de teste';paymentButton.disabled=true;paymentButton.style.cssText='padding:12px;border-radius:8px';
 const paymentStatus=document.createElement('p');paymentStatus.id='jm-payment-status';paymentStatus.textContent='Aguardando liberação da função no servidor.';
 paymentForm.append(cardField.wrapper,dueField.wrapper,amountField.wrapper,accountField.wrapper,dateField.wrapper,paymentButton);
@@ -65,7 +65,7 @@ paymentForm.addEventListener('submit',async event=>{
  event.preventDefault();
  if(!token||!invoicePaymentsAvailable)return;
  const valor=amountField.input.value;
- if(!/^\\d+(?:\\.\\d{1,2})?$/.test(valor)){paymentStatus.textContent='Informe um valor válido com até duas casas decimais.';return;}
+ if(!/^\d+(?:\.\d{1,2})?$/.test(valor)){paymentStatus.textContent='Informe um valor válido com até duas casas decimais.';return;}
  const centsValue=Math.round(Number(valor)*100);
  if(!Number.isSafeInteger(centsValue)||centsValue<=0){paymentStatus.textContent='Valor inválido.';return;}
  const data={cartao:cardField.input.value.trim(),vencimento:dueField.input.value,data_pagamento:dateField.input.value,valor_centavos:centsValue,conta:accountField.input.value.trim()};
