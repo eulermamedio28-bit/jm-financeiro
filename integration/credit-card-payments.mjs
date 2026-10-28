@@ -26,6 +26,8 @@ export function criarPagamentosFatura(pool){
      if(p.cartao!==v.cartao||iso(p.vencimento)!==v.vencimento||iso(p.data_pagamento)!==v.data_pagamento||Number(p.valor_centavos)!==v.valor_centavos||p.conta!==v.conta)throw Error('idempotency_conflict');
      await client.query('COMMIT');return {created:false,pagamento:p};
     }
+    const priorLedger=await client.query('SELECT id FROM jm_lancamentos WHERE account_id=$1::uuid AND client_request_id=$2::uuid',[accountId,v.client_request_id]);
+    if(priorLedger.rows.length)throw Error('idempotency_conflict');
     const purchases=await client.query(`SELECT id,valor_centavos,paga_em FROM jm_compras_cartao
       WHERE account_id=$1::uuid AND cartao=$2 AND vencimento=$3::date FOR UPDATE`,[accountId,v.cartao,v.vencimento]);
     if(!purchases.rows.length||purchases.rows.some(x=>x.paga_em))throw Error('invoice_not_open');
