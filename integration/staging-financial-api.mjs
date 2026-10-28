@@ -10,6 +10,7 @@ import {prepararLancamentos,criarLancamentos} from './ledger-staging.mjs';
 import {prepararContasFinanceiras,criarContasFinanceiras} from './financial-accounts.mjs';
 import {executarMcp} from './mcp-financial.mjs';
 import {prepararCartoes,criarCartoes} from './credit-card-purchases.mjs';
+import {prepararPagamentosFatura} from './credit-card-payments.mjs';
 import {prepararOAuth,criarOAuth,oauthMetadata,resourceMetadata} from './oauth-bridge.mjs';
 const port=Number(process.env.PORT||10000);
 const dbName='jm_financeiro_integracao_teste';
@@ -39,6 +40,7 @@ async function initialize(){
  await prepararContasFinanceiras(pool);
  contasFinanceiras=criarContasFinanceiras(pool);
  await prepararCartoes(pool);cartoes=criarCartoes(pool);verifyToken=verifyAccessToken;
+ await prepararPagamentosFatura(pool); // schema only: no payment endpoint is enabled
  await prepararOAuth(pool);oauth=criarOAuth(pool,verifyAccessToken);
  ready=true;
  console.log('Staging financial API ready');
