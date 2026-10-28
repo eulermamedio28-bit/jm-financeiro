@@ -150,7 +150,7 @@ http.createServer(async(req,res)=>{
    if(req.method==='GET')return respond(200,{compras:await cartoes.listar(identity.accountId)});
    if(req.method==='POST'){
     try{const result=await cartoes.registrar(identity.accountId,body);return respond(result.created?201:200,result);}
-    catch(e){return respond(e.message==='idempotency_conflict'?409:400,{error:e.message==='idempotency_conflict'?'idempotency_conflict':'invalid_credit_purchase'});}
+    catch(e){return respond(['idempotency_conflict','invoice_already_settled'].includes(e.message)?409:400,{error:['idempotency_conflict','invoice_already_settled'].includes(e.message)?e.message:'invalid_credit_purchase'});}
    }
   }
   if(req.url==='/v1/lancamentos'){
