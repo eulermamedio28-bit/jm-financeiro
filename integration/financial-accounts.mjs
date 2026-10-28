@@ -32,7 +32,7 @@ export function criarContasFinanceiras(pool){
   const {rows}=await pool.query('SELECT id,nome,saldo_inicial_centavos FROM jm_contas_financeiras WHERE account_id=$1::uuid ORDER BY criada_em,id',[accountId]);return rows;
  },
  async transferir(accountId,input){
-  if(!uuid.test(input?.client_request_id||'')||!uuid.test(input?.origem_id||'')||!uuid.test(input?.destino_id||'')||input.origem_id===input.destino_id||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.data!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(input.data)||Number.isNaN(Date.parse(input.data+'T00:00:00Z')))throw Error('invalid_transfer');
+  if(!uuid.test(input?.client_request_id||'')||!uuid.test(input?.origem_id||'')||!uuid.test(input?.destino_id||'')||input.origem_id===input.destino_id||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.data!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(input.data)||Number.isNaN(Date.parse(input.data+'T00:00:00Z')))throw Error('invalid_transfer');
   const client=await pool.connect();
   try{
    await client.query('BEGIN');
