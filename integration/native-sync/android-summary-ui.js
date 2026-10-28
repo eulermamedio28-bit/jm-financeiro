@@ -15,6 +15,41 @@ credit.id='jm-credit-card-panel';
 credit.style.cssText='margin:14px 0;padding:14px;border:1px solid #b28b4a;border-radius:12px;background:#32121a;color:#f5e5c7';
 credit.innerHTML='<h3 style="margin:0 0 8px">Cartões de crédito · compras a pagar</h3><p id="jm-credit-status">Entre na conta para consultar compras no cartão.</p><div id="jm-credit-list" aria-live="polite"></div>';
 panel.insertAdjacentElement('afterend',credit);
+
+const invoices=document.createElement('section');
+invoices.id='jm-invoices-panel';
+invoices.style.cssText='margin:14px 0;padding:14px;border:1px solid #b28b4a;border-radius:12px;background:#32121a;color:#f5e5c7';
+const invoicesTitle=document.createElement('h3');invoicesTitle.textContent='Faturas por cartão e vencimento';invoicesTitle.style.margin='0 0 8px';
+const invoicesStatus=document.createElement('p');invoicesStatus.id='jm-invoices-status';invoicesStatus.textContent='Entre na conta para consultar faturas.';
+const invoicesList=document.createElement('div');invoicesList.id='jm-invoices-list';invoicesList.setAttribute('aria-live','polite');
+invoices.append(invoicesTitle,invoicesStatus,invoicesList);
+credit.insertAdjacentElement('afterend',invoices);
+async function refreshInvoices(){
+ const status=$('jm-invoices-status'),list=$('jm-invoices-list');
+ if(!token){list.replaceChildren();status.textContent='Entre na conta para consultar faturas.';return;}
+ status.textContent='Consultando faturas…';
+ try{
+  const response=await fetch(API+'/v1/faturas-cartao',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'});
+  if(response.status===401)throw Error('Sessão expirada. Entre novamente.');
+  if(!response.ok)throw Error('Falha ao consultar faturas (HTTP '+response.status+').');
+  const data=await response.json();
+  if(!Array.isArray(data.faturas))throw Error('Resposta de faturas inválida.');
+  list.replaceChildren();let pendente=0;
+  for(const item of data.faturas){
+   const total=cents(item.total_centavos),open=cents(item.pendente_centavos);
+   if(total<0||open<0||open>total)throw Error('Fatura inconsistente no servidor.');
+   pendente+=open;if(!Number.isSafeInteger(pendente))throw Error('Total de faturas inválido.');
+   const card=document.createElement('div');card.style.cssText='padding:10px 0;border-top:1px solid #72505a;overflow-wrap:anywhere';
+   const title=document.createElement('strong');title.textContent=String(item.cartao||'Cartão')+' · '+money(open)+' pendente';
+   const detail=document.createElement('div');
+   const due=typeof item.vencimento==='string'&&/^\\d{4}-\\d{2}-\\d{2}/.test(item.vencimento)?item.vencimento.slice(0,10).split('-').reverse().join('/'):'não informado';
+   detail.textContent='Vencimento: '+due+' · Total: '+money(total)+' · '+(open===0?'Quitada':'A pagar');
+   card.append(title,detail);list.append(card);
+  }
+  status.textContent=data.faturas.length+' fatura(s) · Pendente: '+money(pendente)+'. Consulta somente leitura.';
+ }catch(error){list.replaceChildren();status.textContent=error.message||'Não foi possível consultar faturas.';}
+}
+
 async function refreshCards(){
  const status=$('jm-credit-status'),list=$('jm-credit-list');
  if(!token){list.replaceChildren();status.textContent='Entre na conta para consultar compras no cartão.';return;}
@@ -56,6 +91,7 @@ async function refresh(){
    card.append(heading,amount);values.append(card);
   }
   await refreshCards();
+  await refreshInvoices();
   $('jm-sync-status').textContent='Resumo online atualizado. Valores totais do servidor, independentes do filtro de período e dos saldos locais.';
  }catch(e){$('jm-sync-status').textContent=e.message||'Falha de conexão.';if(!token){$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;}}
 }
@@ -73,5 +109,5 @@ $('jm-sync-form').addEventListener('submit',async e=>{
  }catch(err){$('jm-sync-status').textContent=err.message||'Não foi possível autenticar.';}finally{btn.disabled=false;}
 });
 $('jm-sync-refresh').addEventListener('click',refresh);
-$('jm-sync-exit').addEventListener('click',()=>{token=null;$('jm-sync-values').textContent='';$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;$('jm-sync-status').textContent='Sessão encerrada.';refreshCards();});
+$('jm-sync-exit').addEventListener('click',()=>{token=null;$('jm-sync-values').textContent='';$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;$('jm-sync-status').textContent='Sessão encerrada.';refreshCards();refreshInvoices();});
 })();
