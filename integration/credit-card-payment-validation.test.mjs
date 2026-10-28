@@ -32,3 +32,10 @@ const falha=simular([{valor_centavos:'74764',paga_em:null}],'UPDATE jm_compras_c
 await assert.rejects(criarPagamentosFatura(falha.pool).pagar(randomUUID(),p),/falha_simulada/);
 assert.equal(falha.comandos.at(-1),'ROLLBACK');
 console.log('Pagamento de fatura: transação, divergência e rollback simulados.');
+
+const duplicado=simular([{valor_centavos:'74764',paga_em:'2026-11-30'}]);
+await assert.rejects(criarPagamentosFatura(duplicado.pool).pagar(randomUUID(),p),/invoice_not_open/);
+assert.equal(duplicado.comandos.at(-1),'ROLLBACK');
+const vazia=simular([]);
+await assert.rejects(criarPagamentosFatura(vazia.pool).pagar(randomUUID(),p),/invoice_not_open/);
+assert.equal(vazia.comandos.at(-1),'ROLLBACK');
