@@ -39,3 +39,14 @@ assert.equal(duplicado.comandos.at(-1),'ROLLBACK');
 const vazia=simular([]);
 await assert.rejects(criarPagamentosFatura(vazia.pool).pagar(randomUUID(),p),/invoice_not_open/);
 assert.equal(vazia.comandos.at(-1),'ROLLBACK');
+
+const idempotente=simular([]);
+idempotente.pool.connect=async()=>({async query(sql){
+ idempotente.comandos.push(String(sql));
+ if(String(sql).includes('FROM jm_pagamentos_fatura'))return {rows:[{cartao:p.cartao,vencimento:p.vencimento,data_pagamento:p.data_pagamento,valor_centavos:String(p.valor_centavos),conta:p.conta}]};
+ return {rows:[]};
+},release(){}});
+assert.equal((await criarPagamentosFatura(idempotente.pool).pagar(randomUUID(),p)).created,false);
+assert.equal(idempotente.comandos.at(-1),'COMMIT');
+assert.equal(idempotente.comandos.some(x=>x.includes('INSERT INTO jm_lancamentos')),false);
+console.log('Idempotência: repetição não cria nova despesa.');
