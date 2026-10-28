@@ -53,6 +53,15 @@ export function criarCartoes(pool){
      const iso=x=>x instanceof Date?x.toISOString().slice(0,10):String(x).slice(0,10);
      if(!compra||compra.cartao!==v.cartao||compra.descricao!==v.descricao||BigInt(compra.valor_centavos)!==BigInt(v.valor_centavos)||iso(compra.data_compra)!==v.data_compra||iso(compra.vencimento)!==v.vencimento||compra.dia_fechamento!==v.dia_fechamento)throw Error('idempotency_conflict');
     }
+    if(created){
+     // Prevent a new liability on an invoice that has already been settled.
+     // Same advisory lock as the payment operation protects against races.
+     const settled=await client.query(
+      'SELECT 1 FROM jm_pagamentos_fatura WHERE account_id=$1::uuid AND cartao=$2 AND vencimento=$3::date LIMIT 1',
+      [accountId,v.cartao,v.vencimento]
+     );
+     if(settled.rows.length)throw Error('invoice_already_settled');
+    }
     await client.query('COMMIT');return {created,compra};
    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   },
