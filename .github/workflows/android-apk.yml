@@ -3,6 +3,9 @@ name: Gerar APK JM Financeiro
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - dev/jm-financeiro-integracao-segura
 
 jobs:
   build:
