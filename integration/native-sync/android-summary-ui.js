@@ -59,6 +59,7 @@ async function refreshPaymentAvailability(){
   if(response.status===403){setPaymentAvailability(false);return;}
   // A rota aceita apenas POST quando habilitada, sem registrar movimentação.
   if(response.status===405){setPaymentAvailability(true);return;}
+  if(response.status===401){paymentStatus.textContent='Sessão expirada. Entre novamente.';return;}
  }catch{}
 }
 paymentForm.addEventListener('submit',async event=>{
