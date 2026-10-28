@@ -9,6 +9,34 @@ panel.id='jm-sync-panel';panel.style.cssText='margin:16px 0;padding:16px;border:
 panel.innerHTML='<h2 style="margin:0 0 8px">Painel financeiro online · dados do servidor</h2><p id="jm-sync-status">Entre com sua conta para consultar os lançamentos online. Os dados deste aparelho não serão modificados.</p><form id="jm-sync-form"><input id="jm-sync-email" type="email" autocomplete="username" placeholder="E-mail" required style="width:100%;padding:10px;margin:5px 0"><input id="jm-sync-password" type="password" autocomplete="current-password" placeholder="Senha" required style="width:100%;padding:10px;margin:5px 0"><button type="submit" style="padding:10px">Consultar servidor</button></form><div id="jm-sync-values" aria-live="polite"></div><button type="button" id="jm-sync-refresh" hidden style="padding:10px;margin-top:8px">Atualizar valores</button><button type="button" id="jm-sync-exit" hidden style="padding:10px;margin:8px">Sair</button>';
 const parent=$('v-painel');if(!parent)return;parent.insertBefore(panel,parent.querySelector('#premiumSummary')||parent.querySelector('#kpis')||parent.firstChild);
 let token=null;
+
+const credit=document.createElement('section');
+credit.id='jm-credit-card-panel';
+credit.style.cssText='margin:14px 0;padding:14px;border:1px solid #b28b4a;border-radius:12px;background:#32121a;color:#f5e5c7';
+credit.innerHTML='<h3 style="margin:0 0 8px">Cartões de crédito · compras a pagar</h3><p id="jm-credit-status">Entre na conta para consultar compras no cartão.</p><div id="jm-credit-list" aria-live="polite"></div>';
+panel.insertAdjacentElement('afterend',credit);
+async function refreshCards(){
+ const status=$('jm-credit-status'),list=$('jm-credit-list');
+ if(!token){list.replaceChildren();status.textContent='Entre na conta para consultar compras no cartão.';return;}
+ status.textContent='Consultando compras no cartão…';
+ try{
+  const r=await fetch(API+'/v1/compras-cartao',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'});
+  if(!r.ok)throw Error(r.status===401?'Sessão expirada. Entre novamente.':'Não foi possível consultar cartões (HTTP '+r.status+').');
+  const data=await r.json();if(!Array.isArray(data.compras))throw Error('Resposta de cartões inválida.');
+  list.replaceChildren();
+  if(!data.compras.length){status.textContent='Nenhuma compra no cartão registrada.';return;}
+  let total=0;
+  for(const item of data.compras){
+   const value=cents(item.valor_centavos);if(value<0)throw Error('Valor de cartão inválido.');
+   const paid=!!item.paga_em;if(!paid)total+=value;
+   const card=document.createElement('div');card.style.cssText='padding:10px 0;border-top:1px solid #72505a;overflow-wrap:anywhere';
+   const heading=document.createElement('strong');heading.textContent=(item.cartao||'Cartão')+' · '+money(value);
+   const detail=document.createElement('div');detail.textContent=(item.descricao||'Compra')+' · Vencimento: '+(typeof item.vencimento==='string'?item.vencimento.slice(0,10).split('-').reverse().join('/'):'não informado')+' · '+(paid?'Pago':'A pagar');
+   card.append(heading,detail);list.append(card);
+  }
+  status.textContent=data.compras.length+' compra(s) · Total pendente: '+money(total)+'. Não altera o saldo bancário.';
+ }catch(e){list.replaceChildren();status.textContent=e.message||'Falha ao consultar cartões.';}
+}
 async function refresh(){
  if(!token)return;
  $('jm-sync-status').textContent='Consultando resumo autenticado…';
@@ -27,6 +55,7 @@ async function refresh(){
    const amount=document.createElement('strong');amount.textContent=money(c);amount.style.cssText='display:block;font-size:20px;margin-top:5px;overflow-wrap:anywhere';
    card.append(heading,amount);values.append(card);
   }
+  await refreshCards();
   $('jm-sync-status').textContent='Resumo online atualizado. Valores totais do servidor, independentes do filtro de período e dos saldos locais.';
  }catch(e){$('jm-sync-status').textContent=e.message||'Falha de conexão.';if(!token){$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;}}
 }
@@ -44,5 +73,5 @@ $('jm-sync-form').addEventListener('submit',async e=>{
  }catch(err){$('jm-sync-status').textContent=err.message||'Não foi possível autenticar.';}finally{btn.disabled=false;}
 });
 $('jm-sync-refresh').addEventListener('click',refresh);
-$('jm-sync-exit').addEventListener('click',()=>{token=null;$('jm-sync-values').textContent='';$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;$('jm-sync-status').textContent='Sessão encerrada.';});
+$('jm-sync-exit').addEventListener('click',()=>{token=null;$('jm-sync-values').textContent='';$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;$('jm-sync-status').textContent='Sessão encerrada.';refreshCards();});
 })();
