@@ -9,6 +9,7 @@ import {criarRotasFinanceiras} from './authenticated-routes.mjs';
 import {prepararLancamentos,criarLancamentos} from './ledger-staging.mjs';
 import {prepararContasFinanceiras,criarContasFinanceiras} from './financial-accounts.mjs';
 import {executarMcp} from './mcp-financial.mjs';
+import {prepararCartoes,criarCartoes} from './credit-card-purchases.mjs';
 import {prepararOAuth,criarOAuth,oauthMetadata,resourceMetadata} from './oauth-bridge.mjs';
 const port=Number(process.env.PORT||10000);
 const dbName='jm_financeiro_integracao_teste';
@@ -16,7 +17,7 @@ const supabaseUrl=process.env.SUPABASE_URL?.replace(/\/$/,'');
 const allowedEmail=process.env.JM_ALLOWED_EMAIL?.trim().toLowerCase();
 const enabled=process.env.JM_ENABLE_FINANCIAL_API==='true';
 const pool=new Pool({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:8000,max:3});
-let routes=null,ledger=null,contasFinanceiras=null,verifyToken=null,oauth=null,ready=false;
+let routes=null,ledger=null,contasFinanceiras=null,cartoes=null,verifyToken=null,oauth=null,ready=false;
 async function initialize(){
  if(!enabled){console.log('Financial API disabled');return;}
  if(!supabaseUrl||!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)||!allowedEmail||!process.env.DATABASE_URL)throw Error('Missing required configuration');
@@ -36,7 +37,8 @@ async function initialize(){
  await prepararLancamentos(pool);
  ledger=criarLancamentos(pool);
  await prepararContasFinanceiras(pool);
- contasFinanceiras=criarContasFinanceiras(pool);verifyToken=verifyAccessToken;
+ contasFinanceiras=criarContasFinanceiras(pool);
+ await prepararCartoes(pool);cartoes=criarCartoes(pool);verifyToken=verifyAccessToken;
  await prepararOAuth(pool);oauth=criarOAuth(pool,verifyAccessToken);
  ready=true;
  console.log('Staging financial API ready');
@@ -84,7 +86,7 @@ http.createServer(async(req,res)=>{
   res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://jm-financeiro-db-private-test.onrender.com/.well-known/oauth-protected-resource"');
   return respond(401,{error:'unauthorized'});
  }
- if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/transferencias','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
+ if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/transferencias','/v1/compras-cartao','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
   try{
@@ -114,6 +116,16 @@ http.createServer(async(req,res)=>{
    let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
    if(req.url==='/v1/contas')return respond(200,{contas:await contasFinanceiras.listar(identity.accountId)});
    return respond(200,{transferencias:await contasFinanceiras.listarTransferencias(identity.accountId)});
+  }
+  if(req.url==='/v1/compras-cartao'){
+   const auth=req.headers.authorization;
+   if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
+   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
+   if(req.method==='GET')return respond(200,{compras:await cartoes.listar(identity.accountId)});
+   if(req.method==='POST'){
+    try{const result=await cartoes.registrar(identity.accountId,body);return respond(result.created?201:200,result);}
+    catch(e){return respond(e.message==='idempotency_conflict'?409:400,{error:e.message==='idempotency_conflict'?'idempotency_conflict':'invalid_credit_purchase'});}
+   }
   }
   if(req.url==='/v1/lancamentos'){
    const auth=req.headers.authorization;
