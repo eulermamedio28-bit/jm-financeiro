@@ -4,8 +4,9 @@
 const API = 'https://jm-financeiro-db-private-test.onrender.com';
 
 function moneyCents(value) {
-  if (!Number.isSafeInteger(value)) throw new Error('Valor financeiro inválido');
-  return value;
+  const cents = typeof value === 'string' && /^-?\d+$/.test(value) ? Number(value) : value;
+  if (!Number.isSafeInteger(cents)) throw new Error('Valor financeiro inválido');
+  return cents;
 }
 
 function parseSummary(data) {
