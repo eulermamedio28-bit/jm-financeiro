@@ -4,7 +4,9 @@ const a = parseSummary({receitas_centavos:0, despesas_centavos:30001, resultado_
 assert.equal(a.resultadoCentavos,-30001);
 assert.equal(a.saldoContasCentavos,null);
 assert.throws(()=>parseSummary({receitas_centavos:0,despesas_centavos:30001,resultado_centavos:0}),/inconsistente/);
-assert.throws(()=>parseSummary({receitas_centavos:0,despesas_centavos:'30001',resultado_centavos:-30001}),/inválido/);
+assert.equal(parseSummary({receitas_centavos:'0',despesas_centavos:'30001',resultado_centavos:'-30001'}).despesasCentavos,30001);
+assert.throws(()=>parseSummary({receitas_centavos:0,despesas_centavos:'30,001',resultado_centavos:-30001}),/inválido/);
+assert.throws(()=>parseSummary({receitas_centavos:0,despesas_centavos:'9007199254740993',resultado_centavos:-30001}),/inválido/);
 (async()=>{
   await assert.rejects(loadAuthenticatedSummary(''),/Autenticação/);
   const data=await loadAuthenticatedSummary('fake-test-token',async (url,options)=>{
