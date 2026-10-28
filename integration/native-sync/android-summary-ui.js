@@ -104,7 +104,21 @@ async function refreshInvoices(){
    const detail=document.createElement('div');
    const due=typeof item.vencimento==='string'&&/^\d{4}-\d{2}-\d{2}/.test(item.vencimento)?item.vencimento.slice(0,10).split('-').reverse().join('/'):'não informado';
    detail.textContent='Vencimento: '+due+' · Total: '+money(total)+' · '+(open===0?'Quitada':'A pagar');
-   card.append(title,detail);list.append(card);
+   card.append(title,detail);
+   if(open===total&&open>0&&/^\d{4}-\d{2}-\d{2}$/.test(String(item.vencimento||''))){
+    const choose=document.createElement('button');
+    choose.type='button';choose.textContent='Selecionar para pagamento';
+    choose.style.cssText='display:block;margin-top:8px;padding:9px;border-radius:8px';
+    choose.addEventListener('click',()=>{
+     cardField.input.value=String(item.cartao||'');
+     dueField.input.value=item.vencimento;
+     amountField.input.value=(open/100).toFixed(2);
+     paymentStatus.textContent='Fatura selecionada. Informe a conta e confirme a data antes de registrar.';
+     paymentBox.scrollIntoView({behavior:'smooth',block:'center'});
+    });
+    card.append(choose);
+   }
+   list.append(card);
   }
   status.textContent=data.faturas.length+' fatura(s) · Pendente: '+money(pendente)+'. Consulta somente leitura.';
  }catch(error){list.replaceChildren();status.textContent=error.message||'Não foi possível consultar faturas.';}
