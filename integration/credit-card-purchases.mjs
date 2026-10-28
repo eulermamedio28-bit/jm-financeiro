@@ -42,6 +42,7 @@ export function criarCartoes(pool){
    const v=validarCompraCartao(input), client=await pool.connect();
    try{
     await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[accountId+'|'+v.cartao+'|'+v.vencimento]);
     const q=await client.query(`INSERT INTO jm_compras_cartao(id,account_id,client_request_id,cartao,descricao,valor_centavos,data_compra,vencimento,dia_fechamento)
     VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7::date,$8::date,$9)
     ON CONFLICT(account_id,client_request_id) DO NOTHING RETURNING *`,[randomUUID(),accountId,v.client_request_id,v.cartao,v.descricao,v.valor_centavos,v.data_compra,v.vencimento,v.dia_fechamento]);
