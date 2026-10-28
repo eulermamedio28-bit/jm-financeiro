@@ -24,6 +24,66 @@ const invoicesStatus=document.createElement('p');invoicesStatus.id='jm-invoices-
 const invoicesList=document.createElement('div');invoicesList.id='jm-invoices-list';invoicesList.setAttribute('aria-live','polite');
 invoices.append(invoicesTitle,invoicesStatus,invoicesList);
 credit.insertAdjacentElement('afterend',invoices);
+
+const paymentBox=document.createElement('section');
+paymentBox.id='jm-payment-panel';
+paymentBox.style.cssText='margin:14px 0;padding:14px;border:1px solid #b28b4a;border-radius:12px;background:#32121a;color:#f5e5c7';
+const paymentTitle=document.createElement('h3');paymentTitle.textContent='Registrar pagamento integral de fatura';paymentTitle.style.margin='0 0 8px';
+const paymentHelp=document.createElement('p');paymentHelp.textContent='Ambiente de testes. Registrar pagamento não transfere dinheiro, mas lança uma despesa e baixa a fatura no servidor.';
+const paymentForm=document.createElement('form');paymentForm.id='jm-payment-form';
+paymentForm.style.cssText='display:grid;gap:10px';
+function paymentField(label,type,name){
+ const wrapper=document.createElement('label');wrapper.textContent=label;wrapper.style.cssText='display:grid;gap:4px';
+ const input=document.createElement('input');input.name=name;input.type=type;input.required=true;input.style.cssText='box-sizing:border-box;width:100%;min-width:0;padding:10px;border-radius:8px';
+ wrapper.append(input);return {wrapper,input};
+}
+const cardField=paymentField('Cartão','text','cartao'),dueField=paymentField('Vencimento','date','vencimento'),amountField=paymentField('Valor total (R$)','number','valor'),accountField=paymentField('Conta de saída','text','conta'),dateField=paymentField('Data do pagamento','date','data_pagamento');
+amountField.input.min='0.01';amountField.input.step='0.01';dateField.input.value=new Date().toLocaleDateString('en-CA');
+const paymentButton=document.createElement('button');paymentButton.type='submit';paymentButton.textContent='Registrar pagamento de teste';paymentButton.disabled=true;paymentButton.style.cssText='padding:12px;border-radius:8px';
+const paymentStatus=document.createElement('p');paymentStatus.id='jm-payment-status';paymentStatus.textContent='Aguardando liberação da função no servidor.';
+paymentForm.append(cardField.wrapper,dueField.wrapper,amountField.wrapper,accountField.wrapper,dateField.wrapper,paymentButton);
+paymentBox.append(paymentTitle,paymentHelp,paymentForm,paymentStatus);
+invoices.insertAdjacentElement('afterend',paymentBox);
+let invoicePaymentsAvailable=false;
+let paymentRequestId=null,paymentRequestSignature=null;
+function setPaymentAvailability(enabled){
+ invoicePaymentsAvailable=enabled;
+ paymentButton.disabled=!enabled||!token;
+ paymentStatus.textContent=enabled?'Pagamento de teste habilitado. Confira os dados antes de confirmar.':'Pagamento bloqueado até a liberação do servidor.';
+}
+async function refreshPaymentAvailability(){
+ setPaymentAvailability(false);
+ if(!token)return;
+ try{
+  const response=await fetch(API+'/v1/pagamentos-fatura',{method:'GET',headers:{Authorization:'Bearer '+token},cache:'no-store'});
+  if(response.status===403){setPaymentAvailability(false);return;}
+  // A rota aceita apenas POST quando habilitada, sem registrar movimentação.
+  if(response.status===405){setPaymentAvailability(true);return;}
+ }catch{}
+}
+paymentForm.addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(!token||!invoicePaymentsAvailable)return;
+ const valor=amountField.input.value;
+ if(!/^\\d+(?:\\.\\d{1,2})?$/.test(valor)){paymentStatus.textContent='Informe um valor válido com até duas casas decimais.';return;}
+ const centsValue=Math.round(Number(valor)*100);
+ if(!Number.isSafeInteger(centsValue)||centsValue<=0){paymentStatus.textContent='Valor inválido.';return;}
+ const data={cartao:cardField.input.value.trim(),vencimento:dueField.input.value,data_pagamento:dateField.input.value,valor_centavos:centsValue,conta:accountField.input.value.trim()};
+ const signature=JSON.stringify(data);
+ if(signature!==paymentRequestSignature){paymentRequestSignature=signature;paymentRequestId=crypto.randomUUID();}
+ const confirmation=window.confirm('Registrar pagamento de teste de '+money(centsValue)+' no cartão '+data.cartao+'? A fatura será baixada e uma despesa será registrada.');
+ if(!confirmation)return;
+ paymentButton.disabled=true;paymentStatus.textContent='Registrando pagamento…';
+ try{
+  const response=await fetch(API+'/v1/pagamentos-fatura',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({...data,client_request_id:paymentRequestId})});
+  const result=await response.json();
+  if(!response.ok)throw Error(result.error||'Pagamento recusado (HTTP '+response.status+').');
+  paymentStatus.textContent=result.created?'Pagamento de teste registrado.':'Pagamento já registrado anteriormente, sem duplicidade.';
+  await refresh(); 
+ }catch(error){paymentStatus.textContent=error.message||'Falha no pagamento.';}
+ finally{paymentButton.disabled=!invoicePaymentsAvailable||!token;}
+});
+
 async function refreshInvoices(){
  const status=$('jm-invoices-status'),list=$('jm-invoices-list');
  if(!token){list.replaceChildren();status.textContent='Entre na conta para consultar faturas.';return;}
@@ -92,6 +152,7 @@ async function refresh(){
   }
   await refreshCards();
   await refreshInvoices();
+  await refreshPaymentAvailability();
   $('jm-sync-status').textContent='Resumo online atualizado. Valores totais do servidor, independentes do filtro de período e dos saldos locais.';
  }catch(e){$('jm-sync-status').textContent=e.message||'Falha de conexão.';if(!token){$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;}}
 }
@@ -109,5 +170,5 @@ $('jm-sync-form').addEventListener('submit',async e=>{
  }catch(err){$('jm-sync-status').textContent=err.message||'Não foi possível autenticar.';}finally{btn.disabled=false;}
 });
 $('jm-sync-refresh').addEventListener('click',refresh);
-$('jm-sync-exit').addEventListener('click',()=>{token=null;$('jm-sync-values').textContent='';$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;$('jm-sync-status').textContent='Sessão encerrada.';refreshCards();refreshInvoices();});
+$('jm-sync-exit').addEventListener('click',()=>{token=null;$('jm-sync-values').textContent='';$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;$('jm-sync-status').textContent='Sessão encerrada.';refreshCards();refreshInvoices();setPaymentAvailability(false);paymentRequestId=null;paymentRequestSignature=null;});
 })();
