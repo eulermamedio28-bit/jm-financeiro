@@ -10,15 +10,16 @@ import {prepararLancamentos,criarLancamentos} from './ledger-staging.mjs';
 import {prepararContasFinanceiras,criarContasFinanceiras} from './financial-accounts.mjs';
 import {executarMcp} from './mcp-financial.mjs';
 import {prepararCartoes,criarCartoes} from './credit-card-purchases.mjs';
-import {prepararPagamentosFatura} from './credit-card-payments.mjs';
+import {prepararPagamentosFatura,criarPagamentosFatura} from './credit-card-payments.mjs';
 import {prepararOAuth,criarOAuth,oauthMetadata,resourceMetadata} from './oauth-bridge.mjs';
 const port=Number(process.env.PORT||10000);
 const dbName='jm_financeiro_integracao_teste';
 const supabaseUrl=process.env.SUPABASE_URL?.replace(/\/$/,'');
 const allowedEmail=process.env.JM_ALLOWED_EMAIL?.trim().toLowerCase();
 const enabled=process.env.JM_ENABLE_FINANCIAL_API==='true';
+const paymentsEnabled=process.env.JM_ENABLE_INVOICE_PAYMENTS==='true';
 const pool=new Pool({connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:8000,max:3});
-let routes=null,ledger=null,contasFinanceiras=null,cartoes=null,verifyToken=null,oauth=null,ready=false;
+let routes=null,ledger=null,contasFinanceiras=null,cartoes=null,pagamentos=null,verifyToken=null,oauth=null,ready=false;
 async function initialize(){
  if(!enabled){console.log('Financial API disabled');return;}
  if(!supabaseUrl||!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)||!allowedEmail||!process.env.DATABASE_URL)throw Error('Missing required configuration');
@@ -40,7 +41,7 @@ async function initialize(){
  await prepararContasFinanceiras(pool);
  contasFinanceiras=criarContasFinanceiras(pool);
  await prepararCartoes(pool);cartoes=criarCartoes(pool);verifyToken=verifyAccessToken;
- await prepararPagamentosFatura(pool); // schema only: no payment endpoint is enabled
+ await prepararPagamentosFatura(pool); pagamentos=criarPagamentosFatura(pool); // disabled unless explicitly enabled
  await prepararOAuth(pool);oauth=criarOAuth(pool,verifyAccessToken);
  ready=true;
  console.log('Staging financial API ready');
@@ -88,7 +89,7 @@ http.createServer(async(req,res)=>{
   res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://jm-financeiro-db-private-test.onrender.com/.well-known/oauth-protected-resource"');
   return respond(401,{error:'unauthorized'});
  }
- if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
+ if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
   try{
@@ -125,6 +126,22 @@ http.createServer(async(req,res)=>{
    if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
    let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
    return respond(200,{faturas:await cartoes.listarFaturas(identity.accountId)});
+  }
+  if(req.url==='/v1/pagamentos-fatura'){
+   if(req.method!=='POST')return respond(405,{error:'method_not_allowed'});
+   if(!paymentsEnabled)return respond(403,{error:'invoice_payments_disabled'});
+   const auth=req.headers.authorization;
+   if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
+   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
+   try{
+    const result=await pagamentos.pagar(identity.accountId,body);
+    return respond(result.created?201:200,result);
+   }catch(e){
+    const code=e.message;
+    if(code==='idempotency_conflict'||code==='invoice_not_open')return respond(409,{error:code});
+    if(code==='invoice_amount_mismatch'||code==='invalid_invoice_payment')return respond(400,{error:code});
+    throw e;
+   }
   }
   if(req.url==='/v1/compras-cartao'){
    const auth=req.headers.authorization;
