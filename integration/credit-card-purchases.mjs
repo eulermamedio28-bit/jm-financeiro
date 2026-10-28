@@ -18,6 +18,24 @@ export async function prepararCartoes(pool){
  UNIQUE(account_id,client_request_id), CHECK(paga_em IS NULL OR paga_em>=data_compra)
  )`);
 }
+export function resumirFaturas(compras){
+ const faturas=new Map();
+ for(const compra of compras){
+  const cartao=String(compra.cartao||'').trim();
+  const vencimento=compra.vencimento instanceof Date?compra.vencimento.toISOString().slice(0,10):String(compra.vencimento||'').slice(0,10);
+  if(!cartao||!validDate(vencimento))throw Error('invalid_credit_invoice');
+  const valor=Number(compra.valor_centavos);
+  if(!Number.isSafeInteger(valor)||valor<=0)throw Error('invalid_credit_invoice');
+  const chave=JSON.stringify([cartao,vencimento]);
+  if(!faturas.has(chave))faturas.set(chave,{cartao,vencimento,total_centavos:0,pendente_centavos:0,quantidade_compras:0});
+  const f=faturas.get(chave);
+  f.total_centavos+=valor;
+  if(!compra.paga_em)f.pendente_centavos+=valor;
+  f.quantidade_compras++;
+  if(!Number.isSafeInteger(f.total_centavos)||!Number.isSafeInteger(f.pendente_centavos))throw Error('invalid_credit_invoice');
+ }
+ return [...faturas.values()].sort((a,b)=>a.vencimento.localeCompare(b.vencimento)||a.cartao.localeCompare(b.cartao));
+}
 export function criarCartoes(pool){
  return {
   async registrar(accountId,input){
@@ -36,6 +54,10 @@ export function criarCartoes(pool){
     }
     await client.query('COMMIT');return {created,compra};
    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+  },
+  async listarFaturas(accountId){
+   const {rows}=await pool.query('SELECT cartao,vencimento,valor_centavos,paga_em FROM jm_compras_cartao WHERE account_id=$1::uuid ORDER BY vencimento DESC LIMIT 1000',[accountId]);
+   return resumirFaturas(rows);
   },
   async listar(accountId){
    const {rows}=await pool.query('SELECT * FROM jm_compras_cartao WHERE account_id=$1::uuid ORDER BY vencimento DESC,criada_em DESC LIMIT 100',[accountId]);return rows;
