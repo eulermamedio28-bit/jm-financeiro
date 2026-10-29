@@ -43,7 +43,8 @@ export function criarContasFinanceiras(pool){
    let transfer=rows[0],created=!!transfer;
    if(!created){
     const old=await client.query('SELECT * FROM jm_transferencias WHERE account_id=$1::uuid AND client_request_id=$2::uuid',[accountId,input.client_request_id]);transfer=old.rows[0];
-    if(!transfer||transfer.origem_id!==input.origem_id||transfer.destino_id!==input.destino_id||BigInt(transfer.valor_centavos)!==BigInt(input.valor_centavos)||String(transfer.data).slice(0,10)!==input.data&&!(transfer.data instanceof Date&&transfer.data.toISOString().slice(0,10)===input.data))throw Error('idempotency_conflict');
+    const storedDate=transfer?.data instanceof Date?transfer.data.toISOString().slice(0,10):String(transfer?.data||'').slice(0,10);
+    if(!transfer||transfer.origem_id!==input.origem_id||transfer.destino_id!==input.destino_id||BigInt(transfer.valor_centavos)!==BigInt(input.valor_centavos)||storedDate!==input.data)throw Error('idempotency_conflict');
    }
    await client.query('COMMIT');return {created,transferencia:transfer};
   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
