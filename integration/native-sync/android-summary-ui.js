@@ -152,6 +152,17 @@ const paymentStatus=document.createElement('p');paymentStatus.id='jm-payment-sta
 paymentForm.append(cardField.wrapper,dueField.wrapper,amountField.wrapper,accountField.wrapper,dateField.wrapper,paymentButton);
 paymentBox.append(paymentTitle,paymentHelp,paymentForm,paymentStatus);
 invoices.insertAdjacentElement('afterend',paymentBox);
+// Mantenha os detalhes operacionais acessíveis sem ocupar a tela inicial.
+// Nenhum formulário, evento ou dado é removido: apenas agrupamos a apresentação.
+const details=document.createElement('details');
+details.id='jm-financial-details';
+details.style.cssText='margin:12px 0;border:1px solid #b28b4a;border-radius:12px;padding:10px;background:#260d13;color:#f5e5c7';
+const detailsHeading=document.createElement('summary');
+detailsHeading.textContent='Contas, cartões, faturas e transferências';
+detailsHeading.style.cssText='cursor:pointer;font-weight:700;padding:8px;min-height:32px';
+details.append(detailsHeading);
+panel.insertAdjacentElement('afterend',details);
+for(const section of [balances,credit,invoices,paymentBox])details.append(section);
 let invoicePaymentsAvailable=false;
 let paymentRequestId=null,paymentRequestSignature=null;
 function setPaymentAvailability(enabled){
