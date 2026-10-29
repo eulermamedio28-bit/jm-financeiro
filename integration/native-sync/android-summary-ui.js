@@ -60,6 +60,42 @@ accountForm.addEventListener('submit',async event=>{
  }catch(error){accountFeedback.textContent=error.message||'Falha ao cadastrar conta.';}
  finally{accountSubmit.disabled=false;}
 });
+const transferForm=document.createElement('form');
+transferForm.style.cssText='display:grid;gap:8px;margin:14px 0;max-width:100%';
+const transferHeading=document.createElement('h4');transferHeading.textContent='Transferência interna entre contas';
+const transferFrom=document.createElement('select'),transferTo=document.createElement('select');
+const transferAmount=document.createElement('input');transferAmount.type='number';transferAmount.step='0.01';transferAmount.min='0.01';transferAmount.required=true;transferAmount.placeholder='Valor da transferência (R$)';
+const transferDate=document.createElement('input');transferDate.type='date';transferDate.required=true;transferDate.value=new Date().toLocaleDateString('en-CA');
+const transferButton=document.createElement('button');transferButton.type='submit';transferButton.textContent='Registrar transferência de teste';
+const transferFeedback=document.createElement('p');transferFeedback.setAttribute('aria-live','polite');
+const fromLabel=document.createElement('label');fromLabel.textContent='Conta de origem';fromLabel.append(transferFrom);
+const toLabel=document.createElement('label');toLabel.textContent='Conta de destino';toLabel.append(transferTo);
+const amountLabel=document.createElement('label');amountLabel.textContent='Valor (R$)';amountLabel.append(transferAmount);
+const dateLabel=document.createElement('label');dateLabel.textContent='Data';dateLabel.append(transferDate);
+transferForm.append(transferHeading,fromLabel,toLabel,amountLabel,dateLabel,transferButton,transferFeedback);
+balances.append(transferForm);
+function updateTransferOptions(accounts){
+ for(const select of [transferFrom,transferTo]){select.replaceChildren();for(const account of accounts){
+  const option=document.createElement('option');option.value=account.id;option.textContent=account.nome;select.append(option);
+ }}
+ transferTo.selectedIndex=accounts.length>1?1:0;
+ transferButton.disabled=accounts.length<2;
+ transferFeedback.textContent=accounts.length<2?'Cadastre pelo menos duas contas para transferir.':'';
+}
+transferForm.addEventListener('submit',async event=>{
+ event.preventDefault();if(!token){transferFeedback.textContent='Entre na conta primeiro.';return;}
+ if(!transferFrom.value||!transferTo.value||transferFrom.value===transferTo.value){transferFeedback.textContent='Selecione duas contas diferentes.';return;}
+ let amount;try{amount=parseBRLCents(transferAmount.value);if(amount<=0)throw Error('O valor deve ser positivo.');}catch(error){transferFeedback.textContent=error.message;return;}
+ transferButton.disabled=true;transferFeedback.textContent='Registrando transferência…';
+ try{
+  const requestId=crypto.randomUUID();
+  const response=await fetch(API+'/v1/transferencias',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({client_request_id:requestId,origem_id:transferFrom.value,destino_id:transferTo.value,valor_centavos:amount,data:transferDate.value})});
+  if(!response.ok)throw Error('Transferência não confirmada (HTTP '+response.status+'). Confira o histórico antes de repetir.');
+  transferFeedback.textContent='Transferência registrada. O saldo consolidado não deve mudar.';
+  await refreshBalances();
+ }catch(error){transferFeedback.textContent=error.message||'Falha na transferência.';}
+ finally{transferButton.disabled=false;}
+});
 async function refreshBalances(){
  if(!token){balancesList.replaceChildren();balancesStatus.textContent='Entre na conta para consultar saldos.';return;}
  balancesStatus.textContent='Consultando saldos…';
@@ -69,6 +105,7 @@ async function refreshBalances(){
   const data=await response.json();
   if(!Array.isArray(data.contas))throw Error('Resposta de saldos inválida.');
   balancesList.replaceChildren();
+  updateTransferOptions(data.contas);
   for(const account of data.contas){
    const initial=cents(account.saldo_inicial_centavos),movement=cents(account.movimentos_centavos),incoming=cents(account.entradas_transferencia_centavos),outgoing=cents(account.saidas_transferencia_centavos),balance=cents(account.saldo_centavos);
    if(initial+movement+incoming-outgoing!==balance)throw Error('Saldo inconsistente para '+String(account.nome||'conta'));
