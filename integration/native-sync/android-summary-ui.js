@@ -65,7 +65,7 @@ transferForm.style.cssText='display:grid;gap:8px;margin:14px 0;max-width:100%';
 const transferHeading=document.createElement('h4');transferHeading.textContent='Transferência interna entre contas';
 const transferFrom=document.createElement('select'),transferTo=document.createElement('select');
 const transferAmount=document.createElement('input');transferAmount.type='number';transferAmount.step='0.01';transferAmount.min='0.01';transferAmount.required=true;transferAmount.placeholder='Valor da transferência (R$)';
-const transferDate=document.createElement('input');transferDate.type='date';transferDate.required=true;transferDate.value=new Date().toLocaleDateString('en-CA');
+const transferDate=document.createElement('input');transferDate.type='date';transferDate.required=true;transferDate.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 const transferButton=document.createElement('button');transferButton.type='submit';transferButton.textContent='Registrar transferência de teste';
 const transferFeedback=document.createElement('p');transferFeedback.setAttribute('aria-live','polite');
 const fromLabel=document.createElement('label');fromLabel.textContent='Conta de origem';fromLabel.append(transferFrom);
@@ -80,17 +80,21 @@ function updateTransferOptions(accounts){
  }}
  transferTo.selectedIndex=accounts.length>1?1:0;
  transferButton.disabled=accounts.length<2;
- transferFeedback.textContent=accounts.length<2?'Cadastre pelo menos duas contas para transferir.':'';
+ if(accounts.length<2)transferFeedback.textContent='Cadastre pelo menos duas contas para transferir.';
 }
+let pendingTransfer=null;
 transferForm.addEventListener('submit',async event=>{
  event.preventDefault();if(!token){transferFeedback.textContent='Entre na conta primeiro.';return;}
  if(!transferFrom.value||!transferTo.value||transferFrom.value===transferTo.value){transferFeedback.textContent='Selecione duas contas diferentes.';return;}
  let amount;try{amount=parseBRLCents(transferAmount.value);if(amount<=0)throw Error('O valor deve ser positivo.');}catch(error){transferFeedback.textContent=error.message;return;}
  transferButton.disabled=true;transferFeedback.textContent='Registrando transferência…';
  try{
-  const requestId=crypto.randomUUID();
+  const signature=[transferFrom.value,transferTo.value,amount,transferDate.value].join('|');
+  if(!pendingTransfer||pendingTransfer.signature!==signature)pendingTransfer={signature,id:crypto.randomUUID()};
+  const requestId=pendingTransfer.id;
   const response=await fetch(API+'/v1/transferencias',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({client_request_id:requestId,origem_id:transferFrom.value,destino_id:transferTo.value,valor_centavos:amount,data:transferDate.value})});
   if(!response.ok)throw Error('Transferência não confirmada (HTTP '+response.status+'). Confira o histórico antes de repetir.');
+  pendingTransfer=null;
   transferFeedback.textContent='Transferência registrada. O saldo consolidado não deve mudar.';
   await refreshBalances();
  }catch(error){transferFeedback.textContent=error.message||'Falha na transferência.';}
