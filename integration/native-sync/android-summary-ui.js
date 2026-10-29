@@ -45,7 +45,8 @@ function parseBRLCents(value){
  const raw=String(value).trim();
  if(!/^-?\\d+(?:\\.\\d{1,2})?$/.test(raw))throw Error('Informe um valor em reais com até duas casas decimais.');
  const [whole,fraction='']=raw.split('.');
- const result=BigInt(whole)*100n+(whole.startsWith('-')?-1n:1n)*BigInt(fraction.padEnd(2,'0'));
+ const negative=raw.startsWith('-');
+ const result=(negative?-1n:1n)*(BigInt(negative?whole.slice(1):whole)*100n+BigInt(fraction.padEnd(2,'0')));
  if(result>BigInt(Number.MAX_SAFE_INTEGER)||result<BigInt(Number.MIN_SAFE_INTEGER))throw Error('Valor muito alto.');
  return Number(result);
 }
