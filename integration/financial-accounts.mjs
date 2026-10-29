@@ -25,6 +25,9 @@ export function criarContasFinanceiras(pool){
   if(typeof nome!=='string'||!nome.trim()||nome.trim().length>120||!Number.isSafeInteger(saldo_inicial_centavos))throw Error('invalid_account');
   const client=await pool.connect();
   try{await client.query('BEGIN');await client.query('INSERT INTO jm_accounts(id) VALUES($1::uuid) ON CONFLICT DO NOTHING',[accountId]);
+   await client.query('SELECT pg_advisory_xact_lock(hashtext($1::text))',[accountId]);
+   const existing=await client.query('SELECT id FROM jm_contas_financeiras WHERE account_id=$1::uuid AND lower(nome)=lower($2) LIMIT 1',[accountId,nome.trim()]);
+   if(existing.rows.length)throw Error('duplicate_account_name');
    const {rows}=await client.query('INSERT INTO jm_contas_financeiras(id,account_id,nome,saldo_inicial_centavos) VALUES($1::uuid,$2::uuid,$3,$4) RETURNING *',[randomUUID(),accountId,nome.trim(),saldo_inicial_centavos]);await client.query('COMMIT');return rows[0];
   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
  },
