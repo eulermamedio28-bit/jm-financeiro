@@ -25,6 +25,38 @@ const invoicesList=document.createElement('div');invoicesList.id='jm-invoices-li
 invoices.append(invoicesTitle,invoicesStatus,invoicesList);
 credit.insertAdjacentElement('afterend',invoices);
 
+const balances=document.createElement('section');
+balances.id='jm-balances-panel';
+balances.style.cssText='margin:14px 0;padding:14px;border:1px solid #b28b4a;border-radius:12px;background:#32121a;color:#f5e5c7';
+const balancesTitle=document.createElement('h3');balancesTitle.textContent='Saldos por conta · servidor';balancesTitle.style.margin='0 0 8px';
+const balancesStatus=document.createElement('p');balancesStatus.textContent='Entre na conta para consultar saldos.';
+const balancesList=document.createElement('div');balancesList.setAttribute('aria-live','polite');
+balances.append(balancesTitle,balancesStatus,balancesList);
+invoices.insertAdjacentElement('afterend',balances);
+async function refreshBalances(){
+ if(!token){balancesList.replaceChildren();balancesStatus.textContent='Entre na conta para consultar saldos.';return;}
+ balancesStatus.textContent='Consultando saldos…';
+ try{
+  const response=await fetch(API+'/v1/saldos',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'});
+  if(!response.ok)throw Error(response.status===401?'Sessão expirada. Entre novamente.':'Consulta de saldos indisponível (HTTP '+response.status+').');
+  const data=await response.json();
+  if(!Array.isArray(data.contas))throw Error('Resposta de saldos inválida.');
+  balancesList.replaceChildren();
+  for(const account of data.contas){
+   const initial=cents(account.saldo_inicial_centavos),movement=cents(account.movimentos_centavos),incoming=cents(account.entradas_transferencia_centavos),outgoing=cents(account.saidas_transferencia_centavos),balance=cents(account.saldo_centavos);
+   if(initial+movement+incoming-outgoing!==balance)throw Error('Saldo inconsistente para '+String(account.nome||'conta'));
+   const line=document.createElement('div');line.style.cssText='padding:10px 0;border-top:1px solid #72505a;overflow-wrap:anywhere';
+   const heading=document.createElement('strong');heading.textContent=String(account.nome||'Conta')+' · '+money(balance);
+   const detail=document.createElement('div');detail.textContent='Inicial: '+money(initial)+' · Movimentos: '+money(movement)+' · Transferências recebidas: '+money(incoming)+' · Enviadas: '+money(outgoing);
+   line.append(heading,detail);balancesList.append(line);
+  }
+  const unallocated=cents(data.nao_alocado_centavos),consolidated=cents(data.saldo_consolidado_centavos);
+  const sum=data.contas.reduce((n,a)=>n+cents(a.saldo_centavos),0)+unallocated;
+  if(!Number.isSafeInteger(sum)||sum!==consolidated)throw Error('Consolidado inconsistente.');
+  balancesStatus.textContent='Saldo consolidado: '+money(consolidated)+(data.conciliado?' · Conciliado':' · Atenção: '+String(data.quantidade_nao_alocados)+' lançamento(s) sem conta cadastrada ('+money(unallocated)+').');
+ }catch(error){balancesList.replaceChildren();balancesStatus.textContent=error.message||'Falha ao consultar saldos.';}
+}
+
 const paymentBox=document.createElement('section');
 paymentBox.id='jm-payment-panel';
 paymentBox.style.cssText='margin:14px 0;padding:14px;border:1px solid #b28b4a;border-radius:12px;background:#32121a;color:#f5e5c7';
@@ -167,6 +199,7 @@ async function refresh(){
   }
   await refreshCards();
   await refreshInvoices();
+  await refreshBalances();
   await refreshPaymentAvailability();
   $('jm-sync-status').textContent='Resumo online atualizado. Valores totais do servidor, independentes do filtro de período e dos saldos locais.';
  }catch(e){$('jm-sync-status').textContent=e.message||'Falha de conexão.';if(!token){$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;}}
@@ -185,5 +218,5 @@ $('jm-sync-form').addEventListener('submit',async e=>{
  }catch(err){$('jm-sync-status').textContent=err.message||'Não foi possível autenticar.';}finally{btn.disabled=false;}
 });
 $('jm-sync-refresh').addEventListener('click',refresh);
-$('jm-sync-exit').addEventListener('click',()=>{token=null;$('jm-sync-values').textContent='';$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;$('jm-sync-status').textContent='Sessão encerrada.';refreshCards();refreshInvoices();setPaymentAvailability(false);paymentRequestId=null;paymentRequestSignature=null;});
+$('jm-sync-exit').addEventListener('click',()=>{token=null;$('jm-sync-values').textContent='';$('jm-sync-form').hidden=false;$('jm-sync-refresh').hidden=true;$('jm-sync-exit').hidden=true;$('jm-sync-status').textContent='Sessão encerrada.';refreshCards();refreshInvoices();refreshBalances();setPaymentAvailability(false);paymentRequestId=null;paymentRequestSignature=null;});
 })();
