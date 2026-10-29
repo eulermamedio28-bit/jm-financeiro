@@ -50,10 +50,17 @@ async function refreshBalances(){
    const detail=document.createElement('div');detail.textContent='Inicial: '+money(initial)+' · Movimentos: '+money(movement)+' · Transferências recebidas: '+money(incoming)+' · Enviadas: '+money(outgoing);
    line.append(heading,detail);balancesList.append(line);
   }
-  const unallocated=cents(data.nao_alocado_centavos),consolidated=cents(data.saldo_consolidado_centavos);
-  const sum=data.contas.reduce((n,a)=>n+cents(a.saldo_centavos),0)+unallocated;
-  if(!Number.isSafeInteger(sum)||sum!==consolidated)throw Error('Consolidado inconsistente.');
-  balancesStatus.textContent='Saldo consolidado: '+money(consolidated)+(data.conciliado?' · Conciliado':' · Atenção: '+String(data.quantidade_nao_alocados)+' lançamento(s) sem conta cadastrada ('+money(unallocated)+').');
+  const unallocated=cents(data.nao_alocado_centavos);
+  const sum=data.contas.reduce((n,a)=>n+cents(a.saldo_centavos),0);
+  if(!Number.isSafeInteger(sum)||sum!==cents(data.saldo_contas_cadastradas_centavos))throw Error('Total de contas inconsistente.');
+  if(data.conciliado){
+   const consolidated=cents(data.saldo_consolidado_centavos);
+   if(consolidated!==sum)throw Error('Consolidado inconsistente.');
+   balancesStatus.textContent='Saldo consolidado conciliado: '+money(consolidated);
+  }else{
+   if(data.saldo_consolidado_centavos!==null)throw Error('Saldo não conciliado apresentado como definitivo.');
+   balancesStatus.textContent='Saldo das contas cadastradas: '+money(sum)+' · Saldo consolidado pendente de conciliação. '+String(data.quantidade_nao_alocados)+' lançamento(s) sem conta cadastrada (resultado: '+money(unallocated)+').';
+  }
  }catch(error){balancesList.replaceChildren();balancesStatus.textContent=error.message||'Falha ao consultar saldos.';}
 }
 
