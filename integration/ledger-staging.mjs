@@ -17,10 +17,17 @@ export function criarLancamentos(pool){
  async registrar(accountId,input){
   if(!TYPES.has(input?.tipo)||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.descricao!=='string'||!input.descricao.trim()||input.descricao.length>500||typeof input.client_request_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.client_request_id)||typeof input.data!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(input.data)||Number.isNaN(Date.parse(input.data+'T00:00:00Z')))throw Error('invalid_entry');
   for(const k of ['categoria','conta'])if(input[k]!=null&&(typeof input[k]!=='string'||input[k].length>120))throw Error('invalid_entry');
-  const args=[randomUUID(),accountId,input.client_request_id,input.tipo,input.valor_centavos,input.descricao.trim(),input.categoria||null,input.conta||null,input.data];
+  if(input.conta_id!=null){
+   if(typeof input.conta_id!=='string'||!/^[0-9a-f-]{36}$/i.test(input.conta_id))throw Error('invalid_account_reference');
+   const linked=await pool.query('SELECT nome FROM jm_contas_financeiras WHERE account_id=$1::uuid AND id=$2::uuid',[accountId,input.conta_id]);
+   if(linked.rows.length!==1)throw Error('invalid_account_reference');
+   if(input.conta&&input.conta!==linked.rows[0].nome)throw Error('invalid_account_reference');
+   input={...input,conta:linked.rows[0].nome};
+  }
+  const args=[randomUUID(),accountId,input.client_request_id,input.tipo,input.valor_centavos,input.descricao.trim(),input.categoria||null,input.conta||null,input.data,input.conta_id||null];
   await pool.query('INSERT INTO jm_accounts(id) VALUES($1::uuid) ON CONFLICT DO NOTHING',[accountId]);
-  const {rows}=await pool.query(`INSERT INTO jm_lancamentos(id,account_id,client_request_id,tipo,valor_centavos,descricao,categoria,conta,data)
- VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9::date)
+  const {rows}=await pool.query(`INSERT INTO jm_lancamentos(id,account_id,client_request_id,tipo,valor_centavos,descricao,categoria,conta,data,conta_id)
+ VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9::date,$10::uuid)
  ON CONFLICT(account_id,client_request_id) DO NOTHING RETURNING *`,args);
   if(rows.length)return {created:true,lancamento:rows[0]};
   const existing=await pool.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid AND client_request_id=$2::uuid',[accountId,input.client_request_id]);
