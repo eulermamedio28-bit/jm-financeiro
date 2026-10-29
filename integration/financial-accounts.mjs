@@ -9,12 +9,28 @@ export async function prepararContasFinanceiras(pool){
  saldo_inicial_centavos bigint NOT NULL DEFAULT 0,
  criada_em timestamptz NOT NULL DEFAULT now(),
  UNIQUE(account_id,id))`);
- await pool.query(`DO $ BEGIN
+ await pool.query(`DO $jm_fk$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='jm_lancamentos_conta_id_fk') THEN
    ALTER TABLE jm_lancamentos ADD CONSTRAINT jm_lancamentos_conta_id_fk
    FOREIGN KEY(account_id,conta_id) REFERENCES jm_contas_financeiras(account_id,id);
   END IF;
- END $`);
+ END $jm_fk// Etapa 10: contas financeiras por usuário e transferências atômicas e idempotentes.
+// Não altera jm_lancamentos e não considera transferências como receita/despesa.
+import {randomUUID} from 'node:crypto';
+const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export async function prepararContasFinanceiras(pool){
+ await pool.query(`CREATE TABLE IF NOT EXISTS jm_contas_financeiras (
+ id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES jm_accounts(id),
+ nome text NOT NULL CHECK(length(nome) BETWEEN 1 AND 120),
+ saldo_inicial_centavos bigint NOT NULL DEFAULT 0,
+ criada_em timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(account_id,id))`);
+ await pool.query(`DO $jm_fk$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='jm_lancamentos_conta_id_fk') THEN
+   ALTER TABLE jm_lancamentos ADD CONSTRAINT jm_lancamentos_conta_id_fk
+   FOREIGN KEY(account_id,conta_id) REFERENCES jm_contas_financeiras(account_id,id);
+  END IF;
+);
  await pool.query(`CREATE TABLE IF NOT EXISTS jm_transferencias (
  id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES jm_accounts(id),
  client_request_id uuid NOT NULL,
