@@ -120,12 +120,26 @@ http.createServer(async(req,res)=>{
    return respond(200,await contasFinanceiras.saldos(identity.accountId));
   }
   if(req.url==='/v1/contas'||req.url==='/v1/transferencias'){
-   if(req.method!=='GET')return respond(405,{error:'method_not_allowed'});
    const auth=req.headers.authorization;
    if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
    let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
-   if(req.url==='/v1/contas')return respond(200,{contas:await contasFinanceiras.listar(identity.accountId)});
-   return respond(200,{transferencias:await contasFinanceiras.listarTransferencias(identity.accountId)});
+   if(req.method==='GET'){
+    if(req.url==='/v1/contas')return respond(200,{contas:await contasFinanceiras.listar(identity.accountId)});
+    return respond(200,{transferencias:await contasFinanceiras.listarTransferencias(identity.accountId)});
+   }
+   if(req.method==='POST'){
+    try{
+     const result=req.url==='/v1/contas'
+      ?await contasFinanceiras.criar(identity.accountId,body)
+      :await contasFinanceiras.transferir(identity.accountId,body);
+     return respond(result.created===false?200:201,req.url==='/v1/contas'?{conta:result}:result);
+    }catch(e){
+     if(e.message==='idempotency_conflict')return respond(409,{error:'idempotency_conflict'});
+     if(e.code==='23503')return respond(400,{error:'account_not_found'});
+     return respond(400,{error:req.url==='/v1/contas'?'invalid_account':'invalid_transfer'});
+    }
+   }
+   return respond(405,{error:'method_not_allowed'});
   }
   if(req.url==='/v1/faturas-cartao'){
    if(req.method!=='GET')return respond(405,{error:'method_not_allowed'});
