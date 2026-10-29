@@ -9,6 +9,7 @@ export async function prepararLancamentos(pool){
  descricao text NOT NULL, categoria text, conta text, data date NOT NULL,
  criado_em timestamptz NOT NULL DEFAULT now(),
  UNIQUE(account_id,client_request_id))`);
+ await pool.query('ALTER TABLE jm_lancamentos ADD COLUMN IF NOT EXISTS conta_id uuid');
  await pool.query('CREATE INDEX IF NOT EXISTS jm_lancamentos_account_data ON jm_lancamentos(account_id,data DESC,criado_em DESC)');
 }
 export function criarLancamentos(pool){
