@@ -68,7 +68,10 @@ export function criarContasFinanceiras(pool){
   const saldo=rows.reduce((sum,c)=>sum+BigInt(c.saldo_centavos),0n);
   return {contas:rows,nao_alocado_centavos:naoAlocado.valor_centavos,
    quantidade_nao_alocados:naoAlocado.quantidade,
-   saldo_consolidado_centavos:(saldo+BigInt(naoAlocado.valor_centavos)).toString(),
+   saldo_contas_cadastradas_centavos:saldo.toString(),
+   resultado_nao_alocado_centavos:naoAlocado.valor_centavos,
+   saldo_consolidado_centavos:naoAlocado.quantidade===0?saldo.toString():null,
+   resultado_provisorio_centavos:(saldo+BigInt(naoAlocado.valor_centavos)).toString(),
    conciliado:naoAlocado.quantidade===0};
  },
  async transferir(accountId,input){
