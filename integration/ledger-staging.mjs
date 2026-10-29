@@ -32,7 +32,7 @@ export function criarLancamentos(pool){
   if(rows.length)return {created:true,lancamento:rows[0]};
   const existing=await pool.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid AND client_request_id=$2::uuid',[accountId,input.client_request_id]);
   const item=existing.rows[0];if(!item)throw Error('idempotency_lookup_failed');
-  if(item.tipo!==input.tipo||Number(item.valor_centavos)!==input.valor_centavos||item.descricao!==input.descricao.trim())throw Error('idempotency_conflict');
+  if(item.tipo!==input.tipo||BigInt(item.valor_centavos)!==BigInt(input.valor_centavos)||item.descricao!==input.descricao.trim()||(item.categoria||null)!==(input.categoria||null)||(item.conta||null)!==(input.conta||null)||(item.conta_id||null)!==(input.conta_id||null)||(item.data instanceof Date?item.data.toISOString().slice(0,10):String(item.data).slice(0,10))!==input.data)throw Error('idempotency_conflict');
   return {created:false,lancamento:item};
  },
  async resumo(accountId){
