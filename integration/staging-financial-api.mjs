@@ -135,6 +135,7 @@ http.createServer(async(req,res)=>{
      return respond(result.created===false?200:201,req.url==='/v1/contas'?{conta:result}:result);
     }catch(e){
      if(e.message==='idempotency_conflict')return respond(409,{error:'idempotency_conflict'});
+     if(e.message==='duplicate_account_name')return respond(409,{error:'duplicate_account_name'});
      if(e.code==='23503')return respond(400,{error:'account_not_found'});
      return respond(400,{error:req.url==='/v1/contas'?'invalid_account':'invalid_transfer'});
     }
