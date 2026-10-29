@@ -33,6 +33,33 @@ const balancesStatus=document.createElement('p');balancesStatus.textContent='Ent
 const balancesList=document.createElement('div');balancesList.setAttribute('aria-live','polite');
 balances.append(balancesTitle,balancesStatus,balancesList);
 invoices.insertAdjacentElement('afterend',balances);
+const accountForm=document.createElement('form');
+accountForm.style.cssText='display:grid;gap:8px;margin:12px 0;max-width:100%';
+const accountName=document.createElement('input');accountName.placeholder='Nome da conta (ex.: Conta teste)';accountName.required=true;accountName.maxLength=120;
+const accountInitial=document.createElement('input');accountInitial.type='number';accountInitial.step='0.01';accountInitial.value='0';accountInitial.required=true;accountInitial.placeholder='Saldo inicial (R$)';
+const accountSubmit=document.createElement('button');accountSubmit.type='submit';accountSubmit.textContent='Cadastrar conta de teste';
+const accountFeedback=document.createElement('p');accountFeedback.setAttribute('aria-live','polite');
+accountForm.append(accountName,accountInitial,accountSubmit,accountFeedback);
+balances.append(accountForm);
+function parseBRLCents(value){
+ const raw=String(value).trim();
+ if(!/^-?\\d+(?:\\.\\d{1,2})?$/.test(raw))throw Error('Informe um valor em reais com até duas casas decimais.');
+ const [whole,fraction='']=raw.split('.');
+ const result=BigInt(whole)*100n+(whole.startsWith('-')?-1n:1n)*BigInt(fraction.padEnd(2,'0'));
+ if(result>BigInt(Number.MAX_SAFE_INTEGER)||result<BigInt(Number.MIN_SAFE_INTEGER))throw Error('Valor muito alto.');
+ return Number(result);
+}
+accountForm.addEventListener('submit',async event=>{
+ event.preventDefault();if(!token){accountFeedback.textContent='Entre na conta primeiro.';return;}
+ accountSubmit.disabled=true;accountFeedback.textContent='Cadastrando…';
+ try{
+  const response=await fetch(API+'/v1/contas',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({nome:accountName.value.trim(),saldo_inicial_centavos:parseBRLCents(accountInitial.value)})});
+  if(!response.ok)throw Error('Cadastro não concluído (HTTP '+response.status+').');
+  accountFeedback.textContent='Conta cadastrada. Confira o saldo abaixo.';accountName.value='';accountInitial.value='0';
+  await refreshBalances();
+ }catch(error){accountFeedback.textContent=error.message||'Falha ao cadastrar conta.';}
+ finally{accountSubmit.disabled=false;}
+});
 async function refreshBalances(){
  if(!token){balancesList.replaceChildren();balancesStatus.textContent='Entre na conta para consultar saldos.';return;}
  balancesStatus.textContent='Consultando saldos…';
