@@ -55,7 +55,7 @@ export function criarContasFinanceiras(pool){
     COALESCE(tu.total,0)::text AS saidas_transferencia_centavos,
     (c.saldo_inicial_centavos+COALESCE(m.delta,0)+COALESCE(ti.total,0)-COALESCE(tu.total,0))::text AS saldo_centavos
    FROM jm_contas_financeiras c
-   LEFT JOIN movements m ON (m.conta_id=c.id OR (m.conta_id IS NULL AND m.nome=c.nome))
+   LEFT JOIN LATERAL (SELECT COALESCE(SUM(delta),0) AS delta FROM movements x WHERE x.conta_id=c.id OR (x.conta_id IS NULL AND x.nome=c.nome)) m ON true
    LEFT JOIN transfers_out tu ON tu.id=c.id
    LEFT JOIN transfers_in ti ON ti.id=c.id
    WHERE c.account_id=$1::uuid ORDER BY c.criada_em,c.id
