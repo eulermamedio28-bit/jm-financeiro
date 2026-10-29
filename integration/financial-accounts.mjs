@@ -31,6 +31,46 @@ export function criarContasFinanceiras(pool){
  async listar(accountId){
   const {rows}=await pool.query('SELECT id,nome,saldo_inicial_centavos FROM jm_contas_financeiras WHERE account_id=$1::uuid ORDER BY criada_em,id',[accountId]);return rows;
  },
+ async saldos(accountId){
+  // Read-only snapshot. Entries are linked by exact account name until account_id
+  // is introduced in the ledger; unmatched entries remain explicitly unallocated.
+  const {rows}=await pool.query(`
+   WITH movements AS (
+    SELECT conta AS nome,
+      COALESCE(SUM(CASE WHEN tipo='receita' THEN valor_centavos ELSE -valor_centavos END),0) AS delta
+    FROM jm_lancamentos WHERE account_id=$1::uuid GROUP BY conta
+   ), transfers_out AS (
+    SELECT origem_id AS id,SUM(valor_centavos) AS total
+    FROM jm_transferencias WHERE account_id=$1::uuid GROUP BY origem_id
+   ), transfers_in AS (
+    SELECT destino_id AS id,SUM(valor_centavos) AS total
+    FROM jm_transferencias WHERE account_id=$1::uuid GROUP BY destino_id
+   )
+   SELECT c.id,c.nome,c.saldo_inicial_centavos::text,
+    COALESCE(m.delta,0)::text AS movimentos_centavos,
+    COALESCE(ti.total,0)::text AS entradas_transferencia_centavos,
+    COALESCE(tu.total,0)::text AS saidas_transferencia_centavos,
+    (c.saldo_inicial_centavos+COALESCE(m.delta,0)+COALESCE(ti.total,0)-COALESCE(tu.total,0))::text AS saldo_centavos
+   FROM jm_contas_financeiras c
+   LEFT JOIN movements m ON m.nome=c.nome
+   LEFT JOIN transfers_out tu ON tu.id=c.id
+   LEFT JOIN transfers_in ti ON ti.id=c.id
+   WHERE c.account_id=$1::uuid ORDER BY c.criada_em,c.id
+  `,[accountId]);
+  const unmatched=await pool.query(`
+   SELECT COALESCE(SUM(CASE WHEN l.tipo='receita' THEN l.valor_centavos ELSE -l.valor_centavos END),0)::text AS valor_centavos,
+    COUNT(*)::integer AS quantidade
+   FROM jm_lancamentos l
+   WHERE l.account_id=$1::uuid AND NOT EXISTS (
+    SELECT 1 FROM jm_contas_financeiras c WHERE c.account_id=l.account_id AND c.nome=l.conta
+   )`,[accountId]);
+  const naoAlocado=unmatched.rows[0];
+  const saldo=rows.reduce((sum,c)=>sum+BigInt(c.saldo_centavos),0n);
+  return {contas:rows,nao_alocado_centavos:naoAlocado.valor_centavos,
+   quantidade_nao_alocados:naoAlocado.quantidade,
+   saldo_consolidado_centavos:(saldo+BigInt(naoAlocado.valor_centavos)).toString(),
+   conciliado:naoAlocado.quantidade===0};
+ },
  async transferir(accountId,input){
   if(!uuid.test(input?.client_request_id||'')||!uuid.test(input?.origem_id||'')||!uuid.test(input?.destino_id||'')||input.origem_id===input.destino_id||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.data!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(input.data)||Number.isNaN(Date.parse(input.data+'T00:00:00Z')))throw Error('invalid_transfer');
   const client=await pool.connect();
