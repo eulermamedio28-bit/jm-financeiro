@@ -39,9 +39,9 @@ export function criarContasFinanceiras(pool){
   // is introduced in the ledger; unmatched entries remain explicitly unallocated.
   const {rows}=await pool.query(`
    WITH movements AS (
-    SELECT conta AS nome,
+    SELECT conta_id,conta AS nome,
       COALESCE(SUM(CASE WHEN tipo='receita' THEN valor_centavos ELSE -valor_centavos END),0) AS delta
-    FROM jm_lancamentos WHERE account_id=$1::uuid GROUP BY conta
+    FROM jm_lancamentos WHERE account_id=$1::uuid GROUP BY conta_id,conta
    ), transfers_out AS (
     SELECT origem_id AS id,SUM(valor_centavos) AS total
     FROM jm_transferencias WHERE account_id=$1::uuid GROUP BY origem_id
@@ -55,7 +55,7 @@ export function criarContasFinanceiras(pool){
     COALESCE(tu.total,0)::text AS saidas_transferencia_centavos,
     (c.saldo_inicial_centavos+COALESCE(m.delta,0)+COALESCE(ti.total,0)-COALESCE(tu.total,0))::text AS saldo_centavos
    FROM jm_contas_financeiras c
-   LEFT JOIN movements m ON m.nome=c.nome
+   LEFT JOIN movements m ON (m.conta_id=c.id OR (m.conta_id IS NULL AND m.nome=c.nome))
    LEFT JOIN transfers_out tu ON tu.id=c.id
    LEFT JOIN transfers_in ti ON ti.id=c.id
    WHERE c.account_id=$1::uuid ORDER BY c.criada_em,c.id
@@ -65,7 +65,7 @@ export function criarContasFinanceiras(pool){
     COUNT(*)::integer AS quantidade
    FROM jm_lancamentos l
    WHERE l.account_id=$1::uuid AND NOT EXISTS (
-    SELECT 1 FROM jm_contas_financeiras c WHERE c.account_id=l.account_id AND c.nome=l.conta
+    SELECT 1 FROM jm_contas_financeiras c WHERE c.account_id=l.account_id AND (c.id=l.conta_id OR (l.conta_id IS NULL AND c.nome=l.conta))
    )`,[accountId]);
   const naoAlocado=unmatched.rows[0];
   const saldo=rows.reduce((sum,c)=>sum+BigInt(c.saldo_centavos),0n);
