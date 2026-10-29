@@ -9,6 +9,12 @@ export async function prepararContasFinanceiras(pool){
  saldo_inicial_centavos bigint NOT NULL DEFAULT 0,
  criada_em timestamptz NOT NULL DEFAULT now(),
  UNIQUE(account_id,id))`);
+ await pool.query(`DO $ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='jm_lancamentos_conta_id_fk') THEN
+   ALTER TABLE jm_lancamentos ADD CONSTRAINT jm_lancamentos_conta_id_fk
+   FOREIGN KEY(account_id,conta_id) REFERENCES jm_contas_financeiras(account_id,id);
+  END IF;
+ END $`);
  await pool.query(`CREATE TABLE IF NOT EXISTS jm_transferencias (
  id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES jm_accounts(id),
  client_request_id uuid NOT NULL,
