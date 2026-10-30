@@ -23,9 +23,12 @@ for (const file of fs.readdirSync("icons")) {
 
 
 
-// Reuse the original shell, styles and embedded JM logo. Legacy financial data
+// Retain the historical shell and restaurant logo while applying ELM product branding. Legacy financial data
 // is never loaded into the live cloud dashboard or silently overwritten.
 let page=fs.readFileSync('index.html','utf8');
+page=page.replace(/<title>[^<]*<\/title>/,'<title>ELM Gestão</title>').replace('content="Gestão financeira do Restaurante JM"','content="Controle financeiro para restaurantes e lanchonetes"');
+page=page.replaceAll('href="./icons/icon-192.png"','href="./icons/elm-mark.svg"');
+fs.copyFileSync('brand/elm-mark.svg','www/icons/elm-mark.svg');
 page=page.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
 page=page.replace(/<main>[\s\S]*?<\/main>/,'<main><div id="cloud-app"></div></main>');
 page=page.replace('<div class="menu" id="menu"></div>','<div class="menu"><span>Painel financeiro</span></div>');
@@ -34,7 +37,7 @@ page=page.replace('</head>',`<style>
 @media(max-width:860px){nav.side{display:none!important}.app{display:block}}
 </style></head>`);
 page=page.replace('</head>','<link rel="stylesheet" href="professional.css"></head>');
-for(const file of ['professional-ui.js','professional.css'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
+for(const file of ['professional-ui.js','professional.css','theme.js'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
 page=page.replace('</body>','<script type="module" src="cloud-app.js"></script></body>');
 fs.writeFileSync('www/index.html',page);
 fs.copyFileSync('integration/native-sync/cloud-app.js','www/cloud-app.js');

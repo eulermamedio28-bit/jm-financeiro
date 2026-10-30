@@ -1,6 +1,8 @@
 from pathlib import Path
 from PIL import Image
-source=Image.open('icons/icon-512.png').convert('RGBA')
+from io import BytesIO
+import cairosvg
+source=Image.open(BytesIO(cairosvg.svg2png(url='brand/elm-mark.svg',output_width=1024,output_height=1024))).convert('RGBA')
 res=Path('android/app/src/main/res')
 for folder,size in {'mipmap-mdpi':48,'mipmap-hdpi':72,'mipmap-xhdpi':96,'mipmap-xxhdpi':144,'mipmap-xxxhdpi':192}.items():
     target=res/folder

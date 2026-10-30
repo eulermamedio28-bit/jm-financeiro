@@ -80,9 +80,9 @@ jobs:
           fi
       - name: Sync Android web assets
         run: npm run android:sync
-      - name: Preserve original Android logo and identify build
+      - name: Apply ELM branding and identify build
         run: |
-          python3 -m pip install Pillow
+          python3 -m pip install Pillow cairosvg
           python3 scripts/android-icons.py
           sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/" android/app/build.gradle
           sed -i 's/versionName "1.0"/versionName "1.1-cloud"/' android/app/build.gradle

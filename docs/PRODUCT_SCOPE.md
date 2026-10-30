@@ -1,4 +1,4 @@
-# JM Financeiro — demonstração de produto para restaurantes
+# ELM Gestão — demonstração de produto para restaurantes
 
 O proprietário confirmou que todos os registros atuais são fictícios. O ambiente atual é demonstrativo; nenhum desses valores representa o caixa real do restaurante.
 
@@ -27,3 +27,5 @@ Antes de cadastrar clientes pagantes, implementar e validar:
 7. Condições de uso, privacidade, suporte, faturamento e implantação de clientes.
 
 Não abrir o allowlist atual para todos os usuários como atalho para atender vários restaurantes. Não cadastrar dados reais no ambiente demonstrativo atual.
+
+A marca aprovada é ELM Gestão (Euler de Lima Mamedio), com a descrição Controle financeiro para restaurantes e lanchonetes. JM Restaurante é somente o estabelecimento demonstrativo. O identificador Android, os contratos de backup, as rotas e os nomes históricos das tabelas permanecem por compatibilidade. A opção Gerenciar → Aparência oferece tema claro (padrão), escuro e automático, com preferência local persistida.

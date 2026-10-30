@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="ELM Gestão">
+ <rect width="512" height="512" rx="112" fill="#6b233c"/>
+ <rect x="30" y="30" width="452" height="452" rx="88" fill="none" stroke="#dfbe79" stroke-width="12"/>
+ <g fill="none" stroke="#f6e9ca" stroke-width="22" stroke-linejoin="round" stroke-linecap="square">
+  <path d="M153 179H91v154h62M91 253h51"/>
+  <path d="M207 179v154h64"/>
+  <path d="M319 333V179l49 74 49-74v154"/>
+ </g>
+ <path d="M158 389h196" stroke="#dfbe79" stroke-width="10" stroke-linecap="round"/>
+</svg>
