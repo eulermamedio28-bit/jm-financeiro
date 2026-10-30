@@ -8,6 +8,17 @@ const panel=document.createElement('section');
 panel.id='jm-sync-panel';panel.style.cssText='margin:16px 0;padding:16px;border:1px solid #b28b4a;border-radius:14px;background:#260d13;color:#f5e5c7;font:14px system-ui';
 panel.innerHTML='<h2 style="margin:0 0 8px">Ambiente de testes · dados do servidor</h2><p id="jm-sync-status">Entre com sua conta para consultar os lançamentos online. Os dados deste aparelho não serão modificados.</p><form id="jm-sync-form"><input id="jm-sync-email" type="email" autocomplete="username" placeholder="E-mail" required style="width:100%;padding:10px;margin:5px 0"><input id="jm-sync-password" type="password" autocomplete="current-password" placeholder="Senha" required style="width:100%;padding:10px;margin:5px 0"><button type="submit" style="padding:10px">Consultar servidor</button></form><div id="jm-sync-values" aria-live="polite"></div><button type="button" id="jm-sync-refresh" hidden style="padding:10px;margin-top:8px">Atualizar valores</button><button type="button" id="jm-sync-exit" hidden style="padding:10px;margin:8px">Sair</button>';
 const parent=$('v-painel');if(!parent)return;parent.insertBefore(panel,parent.querySelector('#premiumSummary')||parent.querySelector('#kpis')||parent.firstChild);
+// Evita duas demonstrações de resultado concorrentes: o resumo remoto de TESTE
+// fica recolhido por padrão, sem esconder nem modificar os dados locais.
+const testSummary=document.createElement('details');
+testSummary.id='jm-server-test-summary';
+testSummary.style.cssText='margin:12px 0;border:1px solid #b28b4a;border-radius:12px;background:#260d13;color:#f5e5c7';
+const testHeading=document.createElement('summary');
+testHeading.textContent='Consultar dados de teste da nuvem';
+testHeading.style.cssText='cursor:pointer;padding:12px 14px;font-weight:700';
+parent.insertBefore(testSummary,panel);
+testSummary.append(testHeading,panel);
+
 let token=null;
 
 const credit=document.createElement('section');
