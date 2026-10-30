@@ -86,7 +86,7 @@ http.createServer(async(req,res)=>{
    const body=pathname==='/oauth/token'?Object.fromEntries(new URLSearchParams(data)):JSON.parse(data);
    const result=pathname==='/oauth/token'?await oauth.trocar(body):{code:await oauth.autorizar(body)};
    return respond(200,result);
-  }catch{return respond(400,{error:'invalid_grant_or_request'});}
+  }catch{return respond(400,{error:pathname==='/oauth/token'?'invalid_grant':'invalid_request'});}
  }
  if(req.method==='GET'&&pathname==='/mcp'){
   res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://jm-financeiro-db-private-test.onrender.com/.well-known/oauth-protected-resource"');
