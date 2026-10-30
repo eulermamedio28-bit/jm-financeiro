@@ -2,4 +2,6 @@ const fs=require('node:fs');const assert=require('node:assert/strict');const htm
 for (const title of ['Compras no cartão','Faturas e pagamentos','Contas e transferências']) {
  assert.ok(js.includes(title), 'Seção ausente: '+title);
 }
+assert.ok(js.includes("testSummary.id='jm-server-test-summary'"), 'Resumo de teste deve ser recolhível');
+assert.ok(js.includes('testSummary.append(testHeading,panel)'), 'Resumo de teste deve conter painel remoto');
 console.log('Android summary module embedded, grouped and isolated.');
