@@ -84,6 +84,7 @@ jobs:
         run: |
           python3 -m pip install Pillow cairosvg
           python3 scripts/android-icons.py
+          python3 scripts/android-system-bars.py
           sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/" android/app/build.gradle
           sed -i 's/versionName "1.0"/versionName "1.1-cloud"/' android/app/build.gradle
       - name: Build debug APK

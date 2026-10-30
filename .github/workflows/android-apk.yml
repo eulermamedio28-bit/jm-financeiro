@@ -36,6 +36,7 @@ jobs:
         run: |
           python3 -m pip install --user Pillow cairosvg
           python3 scripts/android-icons.py
+          python3 scripts/android-system-bars.py
 
       - name: Verificar Android SDK
         run: |
