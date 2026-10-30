@@ -1,4 +1,5 @@
 // Credit card purchases are liabilities, not cash ledger movements.
+import {prepararCadastroCartoes} from './credit-card-registry.mjs';
 import {randomUUID} from 'node:crypto';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const date=/^\d{4}-\d{2}-\d{2}$/;
@@ -8,6 +9,7 @@ export function validarCompraCartao(input){
  return {client_request_id:input.client_request_id,cartao:input.cartao.trim(),descricao:input.descricao.trim(),valor_centavos:input.valor_centavos,data_compra:input.data_compra,vencimento:input.vencimento,dia_fechamento:input.dia_fechamento};
 }
 export async function prepararCartoes(pool){
+ await prepararCadastroCartoes(pool);
  await pool.query(`CREATE TABLE IF NOT EXISTS jm_compras_cartao (
  id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES jm_accounts(id),
  client_request_id uuid NOT NULL, cartao text NOT NULL, descricao text NOT NULL,

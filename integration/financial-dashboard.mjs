@@ -24,7 +24,7 @@ export async function loadDashboard(pool,accountId){
  try{
   await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   const data={};
-  for(const [key,table]of Object.entries({contas:'jm_contas_financeiras',lancamentos:'jm_lancamentos',transferencias:'jm_transferencias',compras:'jm_compras_cartao'})){
+  for(const [key,table]of Object.entries({contas:'jm_contas_financeiras',lancamentos:'jm_lancamentos',transferencias:'jm_transferencias',compras:'jm_compras_cartao',cartoes:'jm_cartoes_financeiros'})){
    const {rows}=await client.query(`SELECT * FROM ${table} WHERE account_id=$1::uuid`,[accountId]);data[key]=rows;
   }
   await client.query('COMMIT');return data;

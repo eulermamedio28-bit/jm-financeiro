@@ -1,6 +1,7 @@
 // JM Financeiro: API authenticated by Supabase JWT, fail-closed by default.
 // This is a staging service. Never expose financial routes without explicit configuration.
 import http from 'node:http';
+import {cadastroCartoes} from './credit-card-registry.mjs';
 import {prepareArchive,saveArchive} from './local-archive.mjs';
 import {loadDashboard} from './financial-dashboard.mjs';
 import {readFile} from 'node:fs/promises';
@@ -97,10 +98,10 @@ http.createServer(async(req,res)=>{
   const auth=req.headers.authorization;
   if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
-  try{return respond(200,{...await loadDashboard(pool,identity.accountId),invoicePaymentsEnabled:paymentsEnabled});}
+  try{return respond(200,{...await loadDashboard(pool,identity.accountId),dataEnvironment:process.env.JM_DATA_ENVIRONMENT==='real'?'real':'demo',invoicePaymentsEnabled:paymentsEnabled});}
   catch{return respond(503,{error:'dashboard_unavailable'});}
  }
- if(!['GET','POST'].includes(req.method)||!['/v1/arquivo-local','/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/saldos','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
+ if(!['GET','POST'].includes(req.method)||!['/v1/cartoes','/v1/arquivo-local','/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/saldos','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
   try{
@@ -110,6 +111,14 @@ http.createServer(async(req,res)=>{
   }catch{return respond(400,{error:'invalid_json'});}
  }
  try{
+  if(req.url==='/v1/cartoes'){
+   const auth=req.headers.authorization;if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
+   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
+   const registry=cadastroCartoes(pool);
+   if(req.method==='GET')return respond(200,{cartoes:await registry.listar(identity.accountId)});
+   try{const result=await registry.criar(identity.accountId,body);return respond(result.created?201:200,result);}
+   catch(e){return respond(e.message==='idempotency_conflict'||e.code==='23505'?409:400,{error:e.code==='23505'?'duplicate_card_name':e.message==='idempotency_conflict'?'idempotency_conflict':'invalid_card'});}
+  }
   if(req.url==='/v1/arquivo-local'){
    const auth=req.headers.authorization;
    if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});

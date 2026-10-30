@@ -1,3 +1,4 @@
+import {cadastroCartoes} from './credit-card-registry.mjs';
 import assert from 'node:assert/strict';import {randomUUID} from 'node:crypto';import {readFile} from 'node:fs/promises';
 import {prepararLancamentos,criarLancamentos} from './ledger-staging.mjs';
 import {prepararContasFinanceiras,criarContasFinanceiras} from './financial-accounts.mjs';
@@ -25,6 +26,7 @@ else{
  const concurrent=await Promise.all([accounts.transferir(id,tr),accounts.transferir(id,tr)]);assert.equal(concurrent.filter(x=>x.created).length,1);
  const after=dashboard(await loadDashboard(pool,id),'2026-10-01','2026-10-31');assert.equal(after.saldo,before.saldo);assert.equal(after.resultado,before.resultado);assert.deepEqual(after.contas.map(c=>c.saldo).sort((a,b)=>a-b),[2000,25000]);
  await assert.rejects(accounts.transferir(other,{...tr,client_request_id:randomUUID()}));
+ const cardMetadata={nome:'Cartao',limite_centavos:100000,dia_fechamento:25,dia_vencimento:10,client_request_id:randomUUID()};const registry=cadastroCartoes(pool);assert.equal((await registry.criar(id,cardMetadata)).created,true);assert.equal((await registry.criar(id,cardMetadata)).created,false);await assert.rejects(registry.criar(id,{...cardMetadata,limite_centavos:2}),/idempotency_conflict/);assert.equal((await registry.listar(other)).length,0);assert.equal((await loadDashboard(pool,id)).cartoes.length,1);
  const purchase={client_request_id:randomUUID(),cartao:'Cartao',descricao:'Compra',valor_centavos:1200,data_compra:'2026-10-04',vencimento:'2026-11-10',dia_fechamento:25};await cards.registrar(id,purchase);
  assert.equal(dashboard(await loadDashboard(pool,id)).saldo,27000);
  const payment={client_request_id:randomUUID(),cartao:'Cartao',vencimento:'2026-11-10',data_pagamento:'2026-10-05',valor_centavos:1200,conta:'Banco'};
