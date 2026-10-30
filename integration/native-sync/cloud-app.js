@@ -16,6 +16,9 @@ state.innerHTML=`<header class="top"><div><h1>JM Financeiro</h1><p class="sub">P
 <section class="panel" id="pending" hidden><h2>Gravação aguardando confirmação</h2><p id="pending-info"></p><button class="btn" id="retry">Consultar / reenviar com o mesmo identificador</button></section>
 <details class="panel"><summary>Preservação e exportação de dados</summary><p>Os registros antigos deste aparelho permanecem separados. Confira a origem antes de importar valores para a base real.</p><button class="btn ghost" id="export-local">Exportar dados antigos do aparelho</button><button class="btn ghost" id="export-cloud">Exportar base da nuvem</button><button class="btn ghost" id="archive-local">Preservar dados antigos na nuvem</button><button class="btn ghost" id="download-archives">Baixar arquivos preservados na nuvem</button><p id="archive-info"></p></details>
 </div>`;
+// Reuse the original image bytes; keep the JM mark visible on mobile too.
+const originalLogo=document.querySelector('.brand img');
+if(originalLogo){const logo=originalLogo.cloneNode();logo.alt='Logo original JM';logo.style.cssText='width:64px;height:64px;object-fit:contain;display:block;margin-bottom:8px';state.querySelector('header > div').prepend(logo);}
 for(const input of state.querySelectorAll('input[type=date]'))input.value=today();
 function month(){const d=today();$('from').value=d.slice(0,8)+'01';$('to').value=d;}
 month();

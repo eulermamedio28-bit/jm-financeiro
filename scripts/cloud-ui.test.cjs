@@ -17,7 +17,7 @@ const {chromium}=require('playwright'),http=require('node:http'),fs=require('nod
  await page.goto(url);await page.evaluate(()=>localStorage.setItem('jm_receitas_v1','[{"id":1,"valor":999}]'));
  assert.equal(serverHits,0,'No private data requested before login');
  async function login(){await page.locator('#login [name=email]').fill('test@example.com');await page.locator('#login [name=password]').fill('test-password');await page.locator('#login button').click();await page.locator('#online').waitFor({state:'visible'});await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('confirmados'));}
- await login();assert.equal(await page.locator('#totals').innerText().then(x=>x.includes('999')),false,'Legacy values never enter cloud totals');
+ await login();assert.equal(await page.locator('#cloud-app header img').isVisible(),true);assert.equal(await page.locator('#totals').innerText().then(x=>x.includes('999')),false,'Legacy values never enter cloud totals');
  await page.locator('#entry [name=descricao]').fill('Venda teste');await page.locator('#entry [name=valor]').fill('123.45');await page.locator('#entry [name=conta_id]').selectOption('a');await page.locator('#entry button').click();await page.waitForFunction(()=>document.querySelector('#entries').textContent.includes('Venda teste'));assert.equal(db.lancamentos[0].valor_centavos,12345);
  await page.locator('#all').click();assert.match(await page.locator('#totals').innerText(),/223,45/);
  await page.locator('details').filter({has:page.locator('#account')}).locator('summary').click();
