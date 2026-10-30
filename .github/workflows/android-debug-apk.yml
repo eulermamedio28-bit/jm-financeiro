@@ -108,6 +108,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: actions/download-artifact@v4
         with:
           name: jm-financeiro-android-debug-apk
@@ -127,7 +131,10 @@ jobs:
             adb install apk/app-debug.apk
             adb shell am start -W -n br.com.restaurantejm.financeiro/.MainActivity
             sleep 10
-            adb shell pidof br.com.restaurantejm.financeiro
+            app_pid=$(adb shell pidof br.com.restaurantejm.financeiro | tr -d '\r')
+            test -n "$app_pid"
+            adb forward tcp:9222 localabstract:webview_devtools_remote_$app_pid
+            node scripts/android-webview-smoke.cjs
             adb shell dumpsys activity activities | grep -F 'br.com.restaurantejm.financeiro/.MainActivity'
             adb logcat -d -s AndroidRuntime:E > android-runtime.log
             ! grep -q 'FATAL EXCEPTION' android-runtime.log

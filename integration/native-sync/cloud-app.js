@@ -1,4 +1,4 @@
-import {dashboard,cents,validDate} from './financial-dashboard.mjs';
+import {dashboard,cents,validDate} from './financial-dashboard.js';
 const API='https://jm-financeiro-db-private-test.onrender.com';
 const $=id=>document.getElementById(id),money=n=>(n/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),today=()=>{const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return p.year+'-'+p.month+'-'+p.day;};
 let token=null,user=null,data=null,busy=false,generation=0;

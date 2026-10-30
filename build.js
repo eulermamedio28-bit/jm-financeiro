@@ -36,4 +36,4 @@ page=page.replace('</head>',`<style>
 page=page.replace('</body>','<script type="module" src="cloud-app.js"></script></body>');
 fs.writeFileSync('www/index.html',page);
 fs.copyFileSync('integration/native-sync/cloud-app.js','www/cloud-app.js');
-fs.copyFileSync('integration/financial-dashboard.mjs','www/financial-dashboard.mjs');
+fs.copyFileSync('integration/financial-dashboard.mjs','www/financial-dashboard.js');
