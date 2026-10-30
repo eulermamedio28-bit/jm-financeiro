@@ -1,5 +1,6 @@
 // Authenticated, idempotent JM Financeiro ledger. Monetary values in integer BRL cents.
 import {randomUUID} from 'node:crypto';
+import {validDate} from './financial-dashboard.mjs';
 const TYPES=new Set(['receita','despesa']);
 export async function prepararLancamentos(pool){
  await pool.query(`CREATE TABLE IF NOT EXISTS jm_lancamentos (
@@ -15,7 +16,7 @@ export async function prepararLancamentos(pool){
 export function criarLancamentos(pool){
  return {
  async registrar(accountId,input){
-  if(!TYPES.has(input?.tipo)||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.descricao!=='string'||!input.descricao.trim()||input.descricao.length>500||typeof input.client_request_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.client_request_id)||typeof input.data!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(input.data)||Number.isNaN(Date.parse(input.data+'T00:00:00Z')))throw Error('invalid_entry');
+  if(!TYPES.has(input?.tipo)||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.descricao!=='string'||!input.descricao.trim()||input.descricao.length>500||typeof input.client_request_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.client_request_id)||!validDate(input.data))throw Error('invalid_entry');
   for(const k of ['categoria','conta'])if(input[k]!=null&&(typeof input[k]!=='string'||input[k].length>120))throw Error('invalid_entry');
   if(input.conta_id!=null){
    if(typeof input.conta_id!=='string'||!/^[0-9a-f-]{36}$/i.test(input.conta_id))throw Error('invalid_account_reference');

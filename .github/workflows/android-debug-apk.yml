@@ -10,6 +10,20 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jm_test
+          POSTGRES_PASSWORD: test_only_ci
+          POSTGRES_DB: jm_financeiro_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jm_test -d jm_financeiro_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,9 +47,28 @@ jobs:
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Install JS dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Build and verify web interface
         run: npm run build:verify
+      - name: Unit and PostgreSQL integration tests
+        env:
+          JM_TEST_ISOLATED_DB: 'true'
+          DATABASE_URL: postgresql://jm_test:test_only_ci@localhost:5432/jm_financeiro_ci
+        run: |
+          npm ci --prefix integration --no-audit --no-fund
+          npm test
+      - name: Browser integration tests
+        run: |
+          npx playwright install --with-deps chromium
+          mkdir -p test-results
+          npm run test:ui
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jm-financeiro-test-evidence
+          path: test-results/
+          if-no-files-found: ignore
       - name: Create Android project if missing
         run: |
           if [ ! -f android/gradlew ]; then
@@ -47,6 +80,12 @@ jobs:
           fi
       - name: Sync Android web assets
         run: npm run android:sync
+      - name: Preserve original Android logo and identify build
+        run: |
+          python3 -m pip install Pillow
+          python3 scripts/android-icons.py
+          sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.1-cloud"/' android/app/build.gradle
       - name: Build debug APK
         working-directory: android
         run: |
@@ -63,3 +102,40 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
+
+  android-install-smoke:
+    needs: build-android
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: jm-financeiro-android-debug-apk
+          path: apk
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb install apk/app-debug.apk
+            adb shell am start -W -n br.com.restaurantejm.financeiro/.MainActivity
+            sleep 10
+            adb shell pidof br.com.restaurantejm.financeiro
+            adb shell dumpsys activity activities | grep -F 'br.com.restaurantejm.financeiro/.MainActivity'
+            adb logcat -d -s AndroidRuntime:E > android-runtime.log
+            ! grep -q 'FATAL EXCEPTION' android-runtime.log
+            adb exec-out screencap -p > android-installed.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jm-financeiro-android-install-evidence
+          path: |
+            android-installed.png
+            android-runtime.log

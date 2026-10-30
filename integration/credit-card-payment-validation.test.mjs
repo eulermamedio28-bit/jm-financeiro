@@ -15,6 +15,7 @@ function simular(compras,erro){
  const cliente={async query(sql){
   comandos.push(String(sql));
   if(erro&&String(sql).includes(erro))throw Error('falha_simulada');
+  if(String(sql).includes('FROM jm_contas_financeiras'))return {rows:[{id:randomUUID()}]};
   if(String(sql).includes('FROM jm_pagamentos_fatura'))return {rows:[]};
   if(String(sql).includes('FROM jm_compras_cartao')&&String(sql).includes('FOR UPDATE'))return {rows:compras};
   if(String(sql).includes('RETURNING *'))return {rows:[{id:randomUUID()}]};

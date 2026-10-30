@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
+import {prepararContasFinanceiras,criarContasFinanceiras} from './financial-accounts.mjs';
 import {prepararLancamentos,criarLancamentos} from './ledger-staging.mjs';
 import {prepararCartoes,criarCartoes} from './credit-card-purchases.mjs';
 import {prepararPagamentosFatura,criarPagamentosFatura} from './credit-card-payments.mjs';
@@ -14,10 +15,12 @@ const pool=new pg.Pool({connectionString:process.env.DATABASE_URL});
 try {
  await pool.query(await readFile(new URL('./postgres-schema.sql',import.meta.url),'utf8'));
  await prepararLancamentos(pool);
+ await prepararContasFinanceiras(pool);
  await prepararCartoes(pool);
  await prepararPagamentosFatura(pool);
  const accountId=randomUUID();
  await pool.query('INSERT INTO jm_accounts(id) VALUES($1)',[accountId]);
+ await criarContasFinanceiras(pool).criar(accountId,{nome:'Banco CI'});
  const cartoes=criarCartoes(pool), pagamentos=criarPagamentosFatura(pool), ledger=criarLancamentos(pool);
  const compra={client_request_id:randomUUID(),cartao:'Cartao CI',descricao:'Compra de teste',valor_centavos:74764,data_compra:'2026-10-27',vencimento:'2026-12-01',dia_fechamento:25};
  assert.equal((await cartoes.registrar(accountId,compra)).created,true);

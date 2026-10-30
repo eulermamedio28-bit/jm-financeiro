@@ -1,6 +1,7 @@
 // Etapa 10: contas financeiras por usuário e transferências atômicas e idempotentes.
 // Não altera jm_lancamentos e não considera transferências como receita/despesa.
 import {randomUUID} from 'node:crypto';
+import {validDate} from './financial-dashboard.mjs';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export async function prepararContasFinanceiras(pool){
  await pool.query(`CREATE TABLE IF NOT EXISTS jm_contas_financeiras (
@@ -9,6 +10,8 @@ export async function prepararContasFinanceiras(pool){
  saldo_inicial_centavos bigint NOT NULL DEFAULT 0,
  criada_em timestamptz NOT NULL DEFAULT now(),
  UNIQUE(account_id,id))`);
+ await pool.query('ALTER TABLE jm_contas_financeiras ADD COLUMN IF NOT EXISTS client_request_id uuid');
+ await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS jm_contas_request_id ON jm_contas_financeiras(account_id,client_request_id)');
  try { await pool.query('ALTER TABLE jm_lancamentos ADD CONSTRAINT jm_lancamentos_conta_id_fk FOREIGN KEY(account_id,conta_id) REFERENCES jm_contas_financeiras(account_id,id)'); } catch(e) { if(e.code!=='42710')throw e; }
  await pool.query(`CREATE TABLE IF NOT EXISTS jm_transferencias (
  id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES jm_accounts(id),
@@ -22,14 +25,19 @@ export async function prepararContasFinanceiras(pool){
 }
 export function criarContasFinanceiras(pool){
  return {
- async criar(accountId,{nome,saldo_inicial_centavos=0}={}){
+ async criar(accountId,{nome,saldo_inicial_centavos=0,client_request_id=null}={}){
   if(typeof nome!=='string'||!nome.trim()||nome.trim().length>120||!Number.isSafeInteger(saldo_inicial_centavos))throw Error('invalid_account');
+  if(client_request_id!==null&&!uuid.test(client_request_id))throw Error('invalid_account');
   const client=await pool.connect();
   try{await client.query('BEGIN');await client.query('INSERT INTO jm_accounts(id) VALUES($1::uuid) ON CONFLICT DO NOTHING',[accountId]);
    await client.query('SELECT pg_advisory_xact_lock(hashtext($1::text))',[accountId]);
+   if(client_request_id){
+    const prior=await client.query('SELECT * FROM jm_contas_financeiras WHERE account_id=$1::uuid AND client_request_id=$2::uuid',[accountId,client_request_id]);
+    if(prior.rows.length){const c=prior.rows[0];if(c.nome!==nome.trim()||BigInt(c.saldo_inicial_centavos)!==BigInt(saldo_inicial_centavos))throw Error('idempotency_conflict');await client.query('COMMIT');return c;}
+   }
    const existing=await client.query('SELECT id FROM jm_contas_financeiras WHERE account_id=$1::uuid AND lower(nome)=lower($2) LIMIT 1',[accountId,nome.trim()]);
    if(existing.rows.length)throw Error('duplicate_account_name');
-   const {rows}=await client.query('INSERT INTO jm_contas_financeiras(id,account_id,nome,saldo_inicial_centavos) VALUES($1::uuid,$2::uuid,$3,$4) RETURNING *',[randomUUID(),accountId,nome.trim(),saldo_inicial_centavos]);await client.query('COMMIT');return rows[0];
+   const {rows}=await client.query('INSERT INTO jm_contas_financeiras(id,account_id,nome,saldo_inicial_centavos,client_request_id) VALUES($1::uuid,$2::uuid,$3,$4,$5::uuid) RETURNING *',[randomUUID(),accountId,nome.trim(),saldo_inicial_centavos,client_request_id]);await client.query('COMMIT');return rows[0];
   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
  },
  async listar(accountId){
@@ -79,7 +87,7 @@ export function criarContasFinanceiras(pool){
    conciliado:naoAlocado.quantidade===0};
  },
  async transferir(accountId,input){
-  if(!uuid.test(input?.client_request_id||'')||!uuid.test(input?.origem_id||'')||!uuid.test(input?.destino_id||'')||input.origem_id===input.destino_id||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.data!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(input.data)||Number.isNaN(Date.parse(input.data+'T00:00:00Z')))throw Error('invalid_transfer');
+  if(!uuid.test(input?.client_request_id||'')||!uuid.test(input?.origem_id||'')||!uuid.test(input?.destino_id||'')||input.origem_id===input.destino_id||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||!validDate(input.data))throw Error('invalid_transfer');
   const client=await pool.connect();
   try{
    await client.query('BEGIN');

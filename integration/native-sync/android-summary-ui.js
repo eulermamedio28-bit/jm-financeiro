@@ -54,7 +54,7 @@ accountForm.append(accountName,accountInitial,accountSubmit,accountFeedback);
 balances.append(accountForm);
 function parseBRLCents(value){
  const raw=String(value).trim();
- if(!/^-?\\d+(?:\\.\\d{1,2})?$/.test(raw))throw Error('Informe um valor em reais com até duas casas decimais.');
+ if(!/^-?\d+(?:\.\d{1,2})?$/.test(raw))throw Error('Informe um valor em reais com até duas casas decimais.');
  const [whole,fraction='']=raw.split('.');
  const negative=raw.startsWith('-');
  const result=(negative?-1n:1n)*(BigInt(negative?whole.slice(1):whole)*100n+BigInt(fraction.padEnd(2,'0')));

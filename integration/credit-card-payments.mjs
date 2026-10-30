@@ -33,10 +33,12 @@ export function criarPagamentosFatura(pool){
     if(!purchases.rows.length||purchases.rows.some(x=>x.paga_em))throw Error('invoice_not_open');
     const total=purchases.rows.reduce((n,x)=>n+BigInt(x.valor_centavos),0n);
     if(total!==BigInt(v.valor_centavos))throw Error('invoice_amount_mismatch');
+    const linked=await client.query('SELECT id FROM jm_contas_financeiras WHERE account_id=$1::uuid AND nome=$2',[accountId,v.conta]);
+    if(linked.rows.length!==1)throw Error('invalid_payment_account');
     const lancamentoId=randomUUID(),pagamentoId=randomUUID();
-    await client.query(`INSERT INTO jm_lancamentos(id,account_id,client_request_id,tipo,valor_centavos,descricao,categoria,conta,data)
-      VALUES($1::uuid,$2::uuid,$3::uuid,'despesa',$4,$5,'Pagamento de fatura de cartão',$6,$7::date)`,
-      [lancamentoId,accountId,v.client_request_id,v.valor_centavos,'Pagamento fatura '+v.cartao+' venc. '+v.vencimento,v.conta,v.data_pagamento]);
+    await client.query(`INSERT INTO jm_lancamentos(id,account_id,client_request_id,tipo,valor_centavos,descricao,categoria,conta,data,conta_id)
+      VALUES($1::uuid,$2::uuid,$3::uuid,'despesa',$4,$5,'Pagamento de fatura de cartão',$6,$7::date,$8::uuid)`,
+      [lancamentoId,accountId,v.client_request_id,v.valor_centavos,'Pagamento fatura '+v.cartao+' venc. '+v.vencimento,v.conta,v.data_pagamento,linked.rows[0].id]);
     await client.query(`UPDATE jm_compras_cartao SET paga_em=$4::date WHERE account_id=$1::uuid AND cartao=$2 AND vencimento=$3::date AND paga_em IS NULL`,
       [accountId,v.cartao,v.vencimento,v.data_pagamento]);
     const inserted=await client.query(`INSERT INTO jm_pagamentos_fatura(id,account_id,client_request_id,cartao,vencimento,data_pagamento,valor_centavos,conta,lancamento_id)

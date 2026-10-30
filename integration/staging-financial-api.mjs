@@ -1,6 +1,8 @@
 // JM Financeiro: API authenticated by Supabase JWT, fail-closed by default.
 // This is a staging service. Never expose financial routes without explicit configuration.
 import http from 'node:http';
+import {prepareArchive,saveArchive} from './local-archive.mjs';
+import {loadDashboard} from './financial-dashboard.mjs';
 import {readFile} from 'node:fs/promises';
 import {Pool} from 'pg';
 import {createRemoteJWKSet,jwtVerify} from 'jose';
@@ -36,6 +38,7 @@ async function initialize(){
   return {accountId:payload.sub};
  };
  routes=criarRotasFinanceiras({verifyAccessToken,repository:criarRepositorioSnapshots(pool),syncEnabled:true});
+ await prepareArchive(pool);
  await prepararLancamentos(pool);
  ledger=criarLancamentos(pool);
  await prepararContasFinanceiras(pool);
@@ -89,7 +92,15 @@ http.createServer(async(req,res)=>{
   res.setHeader('WWW-Authenticate','Bearer resource_metadata="https://jm-financeiro-db-private-test.onrender.com/.well-known/oauth-protected-resource"');
   return respond(401,{error:'unauthorized'});
  }
- if(!['GET','POST'].includes(req.method)||!['/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/saldos','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
+ if(pathname==='/v1/painel'){
+  if(req.method!=='GET')return respond(405,{error:'method_not_allowed'});
+  const auth=req.headers.authorization;
+  if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
+  let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
+  try{return respond(200,{...await loadDashboard(pool,identity.accountId),invoicePaymentsEnabled:paymentsEnabled});}
+  catch{return respond(503,{error:'dashboard_unavailable'});}
+ }
+ if(!['GET','POST'].includes(req.method)||!['/v1/arquivo-local','/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/saldos','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
   try{
@@ -99,6 +110,13 @@ http.createServer(async(req,res)=>{
   }catch{return respond(400,{error:'invalid_json'});}
  }
  try{
+  if(req.url==='/v1/arquivo-local'){
+   const auth=req.headers.authorization;
+   if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
+   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
+   if(req.method==='GET'){const {rows}=await pool.query('SELECT digest,payload,created_at FROM jm_local_archives WHERE account_id=$1::uuid ORDER BY created_at DESC',[identity.accountId]);return respond(200,{archives:rows});}
+   try{return respond(200,await saveArchive(pool,identity.accountId,body));}catch(e){if(['invalid_archive','archive_too_large'].includes(e.message))return respond(400,{error:e.message});throw e;}
+  }
   if(req.url==='/mcp'){
    if(req.method!=='POST')return respond(405,{error:'method_not_allowed'});
    const result=await executarMcp({body,authorization:req.headers.authorization,verifyToken:(token)=>oauth.verificarBearer('Bearer '+token),ledger,cartoes});
@@ -161,7 +179,7 @@ http.createServer(async(req,res)=>{
    }catch(e){
     const code=e.message;
     if(code==='idempotency_conflict'||code==='invoice_not_open')return respond(409,{error:code});
-    if(code==='invoice_amount_mismatch'||code==='invalid_invoice_payment')return respond(400,{error:code});
+    if(code==='invoice_amount_mismatch'||code==='invalid_invoice_payment'||code==='invalid_payment_account')return respond(400,{error:code});
     throw e;
    }
   }
