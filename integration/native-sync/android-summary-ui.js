@@ -172,7 +172,7 @@ const detailsHeading=document.createElement('summary');
 detailsHeading.textContent='Contas, cartões, faturas e transferências';
 detailsHeading.style.cssText='cursor:pointer;font-weight:700;padding:8px;min-height:32px';
 details.append(detailsHeading);
-panel.insertAdjacentElement('afterend',details);
+testSummary.append(details);
 for(const section of [balances,credit,invoices,paymentBox])details.append(section);
 let invoicePaymentsAvailable=false;
 let paymentRequestId=null,paymentRequestSignature=null;
@@ -304,22 +304,6 @@ async function refresh(){
 }
 // Organiza as operações avançadas sem removê-las nem alterar os dados.
 // Por padrão, o usuário vê apenas o resumo; detalhes abrem sob demanda.
-for (const [section, title] of [
- [credit, 'Compras no cartão'],
- [invoices, 'Faturas e pagamentos'],
- [balances, 'Contas e transferências']
-]) {
- const details=document.createElement('details');
- details.className='jm-finance-detail';
- details.style.cssText='margin:10px 0;border:1px solid #b28b4a;border-radius:12px;background:#260d13;color:#f5e5c7;overflow:hidden';
- const summary=document.createElement('summary');
- summary.textContent=title;
- summary.style.cssText='cursor:pointer;padding:14px 16px;font-weight:700;list-style-position:inside';
- section.parentNode.insertBefore(details,section);
- details.append(summary,section);
- section.style.margin='0';
- section.style.border='0';
-}
 
 $('jm-sync-form').addEventListener('submit',async e=>{
  e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;
