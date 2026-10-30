@@ -15,3 +15,4 @@ html[data-theme=light] #cloud-app h1,html[data-theme=light] #cloud-app .panel h2
 #cloud-app .kpi .sub{white-space:nowrap;overflow-wrap:normal;word-break:normal;font-size:clamp(18px,5vw,24px)}
 #cloud-app .kpi[data-wide=true]{grid-column:1/-1}
 @media(max-width:380px){#cloud-app .kpis{grid-template-columns:1fr}#cloud-app .kpi .sub{font-size:26px}}
+#cloud-app .kpi[data-wide=true] .sub{font-size:clamp(16px,4vw,24px)}
