@@ -50,7 +50,7 @@ export function criarContasFinanceiras(pool){
    WITH movements AS (
     SELECT conta_id,conta AS nome,
       COALESCE(SUM(CASE WHEN tipo='receita' THEN valor_centavos ELSE -valor_centavos END),0) AS delta
-    FROM jm_lancamentos WHERE account_id=$1::uuid GROUP BY conta_id,conta
+    FROM jm_lancamentos WHERE account_id=$1::uuid AND excluido_em IS NULL GROUP BY conta_id,conta
    ), transfers_out AS (
     SELECT origem_id AS id,SUM(valor_centavos) AS total
     FROM jm_transferencias WHERE account_id=$1::uuid GROUP BY origem_id
@@ -73,7 +73,7 @@ export function criarContasFinanceiras(pool){
    SELECT COALESCE(SUM(CASE WHEN l.tipo='receita' THEN l.valor_centavos ELSE -l.valor_centavos END),0)::text AS valor_centavos,
     COUNT(*)::integer AS quantidade
    FROM jm_lancamentos l
-   WHERE l.account_id=$1::uuid AND NOT EXISTS (
+   WHERE l.account_id=$1::uuid AND l.excluido_em IS NULL AND NOT EXISTS (
     SELECT 1 FROM jm_contas_financeiras c WHERE c.account_id=l.account_id AND (c.id=l.conta_id OR (l.conta_id IS NULL AND c.nome=l.conta))
    )`,[accountId]);
   const naoAlocado=unmatched.rows[0];

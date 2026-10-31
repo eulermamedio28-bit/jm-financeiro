@@ -87,7 +87,7 @@ jobs:
           python3 scripts/android-system-bars.py
           BUILD_VERSION=$(node -p "require('./android-version.json').versionCode")
           sed -i "s/versionCode 1/versionCode ${BUILD_VERSION}/" android/app/build.gradle
-          sed -i 's/versionName "1.0"/versionName "1.2.5-preview"/' android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.2.6-preview"/' android/app/build.gradle
       - name: Build debug APK
         working-directory: android
         run: |
@@ -103,7 +103,7 @@ jobs:
       - name: Upload unsigned release for later signing
         uses: actions/upload-artifact@v4
         with:
-          name: elm-gestao-125-unsigned-and-certificate
+          name: elm-gestao-126-unsigned-and-certificate
           path: |
             android/app/build/outputs/apk/release/*unsigned.apk
             apk-certificate.txt

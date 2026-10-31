@@ -1,6 +1,7 @@
 // JM Financeiro: API authenticated by Supabase JWT, fail-closed by default.
 // This is a staging service. Never expose financial routes without explicit configuration.
 import http from 'node:http';
+import {prepareEntryManagement,changeEntry,entryHistory} from './ledger-management.mjs';
 import {prepareReconciliation,reconcileEntry} from './ledger-reconciliation.mjs';
 import {cadastroCartoes} from './credit-card-registry.mjs';
 import {prepareArchive,saveArchive} from './local-archive.mjs';
@@ -48,6 +49,7 @@ async function initialize(){
  await prepararCartoes(pool);cartoes=criarCartoes(pool);verifyToken=verifyAccessToken;
  await prepararPagamentosFatura(pool); pagamentos=criarPagamentosFatura(pool); // disabled unless explicitly enabled
  await prepareReconciliation(pool);
+ await prepareEntryManagement(pool);
  await prepararOAuth(pool);oauth=criarOAuth(pool,verifyAccessToken);
  ready=true;
  console.log('Staging financial API ready');
@@ -100,10 +102,10 @@ http.createServer(async(req,res)=>{
   const auth=req.headers.authorization;
   if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
-  try{return respond(200,{...await loadDashboard(pool,identity.accountId),dataEnvironment:process.env.JM_DATA_ENVIRONMENT==='real'?'real':'demo',invoicePaymentsEnabled:paymentsEnabled,reconciliationEnabled:true});}
+  try{return respond(200,{...await loadDashboard(pool,identity.accountId),dataEnvironment:process.env.JM_DATA_ENVIRONMENT==='real'?'real':'demo',invoicePaymentsEnabled:paymentsEnabled,reconciliationEnabled:true,entryManagementEnabled:true});}
   catch{return respond(503,{error:'dashboard_unavailable'});}
  }
- if(!['GET','POST'].includes(req.method)||!['/v1/lancamentos/conciliar','/v1/cartoes','/v1/arquivo-local','/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/saldos','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
+ if(!['GET','POST'].includes(req.method)||!['/v1/lancamentos/alterar','/v1/lancamentos/historico','/v1/lancamentos/excluidos','/v1/lancamentos/conciliar','/v1/cartoes','/v1/arquivo-local','/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/saldos','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
   try{
@@ -113,6 +115,16 @@ http.createServer(async(req,res)=>{
   }catch{return respond(400,{error:'invalid_json'});}
  }
  try{
+  if(['/v1/lancamentos/alterar','/v1/lancamentos/historico','/v1/lancamentos/excluidos'].includes(req.url)){
+   if(req.method!=='POST')return respond(405,{error:'method_not_allowed'});
+   const auth=req.headers.authorization;if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
+   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
+   try{
+    if(req.url==='/v1/lancamentos/historico')return respond(200,{historico:await entryHistory(pool,identity.accountId,body?.lancamento_id)});
+    if(req.url==='/v1/lancamentos/excluidos'){const {rows}=await pool.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid AND excluido_em IS NOT NULL ORDER BY excluido_em DESC LIMIT 500',[identity.accountId]);return respond(200,{lancamentos:rows});}
+    const result=await changeEntry(pool,identity.accountId,body);return respond(result.created?201:200,result);
+   }catch(e){const error=e.message;if(['invalid_entry_change','invalid_account_reference'].includes(error))return respond(400,{error});if(error==='entry_not_found')return respond(404,{error});if(['stale_entry','idempotency_conflict','invalid_entry_state','linked_entry_protected'].includes(error))return respond(409,{error});throw e;}
+  }
   if(req.url==='/v1/cartoes'){
    const auth=req.headers.authorization;if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
    let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}

@@ -11,6 +11,7 @@ export async function prepararLancamentos(pool){
  criado_em timestamptz NOT NULL DEFAULT now(),
  UNIQUE(account_id,client_request_id))`);
  await pool.query('ALTER TABLE jm_lancamentos ADD COLUMN IF NOT EXISTS conta_id uuid');
+ await pool.query('ALTER TABLE jm_lancamentos ADD COLUMN IF NOT EXISTS excluido_em timestamptz, ADD COLUMN IF NOT EXISTS excluido_por uuid, ADD COLUMN IF NOT EXISTS versao integer NOT NULL DEFAULT 0');
  await pool.query('CREATE INDEX IF NOT EXISTS jm_lancamentos_account_data ON jm_lancamentos(account_id,data DESC,criado_em DESC)');
 }
 export function criarLancamentos(pool){
@@ -41,11 +42,11 @@ export function criarLancamentos(pool){
    COALESCE(SUM(valor_centavos) FILTER (WHERE tipo='receita'),0)::text AS receitas_centavos,
    COALESCE(SUM(valor_centavos) FILTER (WHERE tipo='despesa'),0)::text AS despesas_centavos,
    COUNT(*)::integer AS quantidade
-   FROM jm_lancamentos WHERE account_id=$1::uuid`,[accountId]);
+   FROM jm_lancamentos WHERE account_id=$1::uuid AND excluido_em IS NULL`,[accountId]);
   const x=rows[0];return {receitas_centavos:x.receitas_centavos,despesas_centavos:x.despesas_centavos,resultado_centavos:(BigInt(x.receitas_centavos)-BigInt(x.despesas_centavos)).toString(),quantidade:x.quantidade};
  },
  async listar(accountId,limit=50){
-  const {rows}=await pool.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid ORDER BY data DESC,criado_em DESC LIMIT $2',[accountId,Math.min(Math.max(limit,1),100)]);
+  const {rows}=await pool.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid AND excluido_em IS NULL ORDER BY data DESC,criado_em DESC LIMIT $2',[accountId,Math.min(Math.max(limit,1),100)]);
   return rows;
  }
  };

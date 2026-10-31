@@ -93,3 +93,5 @@ html[data-theme=light] #cloud-app #jm-bottom-nav button{color:#62515c}
 #cloud-app #jm-actions .jm-action-options button{min-height:64px;text-align:center}
 #cloud-app #jm-entry-chips button{min-height:44px}
 #cloud-app #jm-recent [role=button]:focus-visible{outline:2px solid var(--jm-gold);outline-offset:3px}
+
+#cloud-app #jm-entry-detail>button,#cloud-app #jm-deleted-list>button{display:block;width:100%;margin:10px 0}#cloud-app #jm-detail-delete{color:#ac2637}html[data-theme=dark] #cloud-app #jm-detail-delete{color:#ff8a8a}
