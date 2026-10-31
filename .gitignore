@@ -1,0 +1,7 @@
+node_modules/
+integration/node_modules/
+www/
+android/
+public/
+test-results/
+*.log

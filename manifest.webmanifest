@@ -1,12 +1,12 @@
 {
-  "name": "JM Financeiro",
-  "short_name": "JM Financeiro",
-  "description": "Controle financeiro do Restaurante JM",
+  "name": "ELM Gestão",
+  "short_name": "ELM Gestão",
+  "description": "Controle financeiro para restaurantes e lanchonetes",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#1B0D12",
-  "theme_color": "#6B1A2B",
+  "background_color": "#f7f5f6",
+  "theme_color": "#6b233c",
   "icons": [
     {
       "src": "./icons/icon-192.png",
@@ -31,6 +31,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "./icons/elm-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

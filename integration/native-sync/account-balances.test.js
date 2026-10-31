@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {calcularSaldos} from './account-balances.js';
+const contas=[{id:'dinheiro',saldo_inicial_centavos:100000},{id:'nubank',saldo_inicial_centavos:50000}];
+const x=calcularSaldos({contas,lancamentos:[{tipo:'receita',conta_id:'dinheiro',valor_centavos:20000},{tipo:'despesa',conta_id:'nubank',valor_centavos:30001}],transferencias:[{origem_id:'dinheiro',destino_id:'nubank',valor_centavos:10000}]});
+assert.deepEqual(x.saldos_por_conta,[{conta_id:'dinheiro',saldo_centavos:110000},{conta_id:'nubank',saldo_centavos:29999}]);
+assert.equal(x.saldo_consolidado_centavos,139999);
+assert.equal(x.receitas_centavos,20000);
+assert.equal(x.despesas_centavos,30001);
+assert.equal(x.resultado_centavos,-10001);
+assert.throws(()=>calcularSaldos({contas,transferencias:[{origem_id:'dinheiro',destino_id:'dinheiro',valor_centavos:1}]}),/invalid_transfer/);
+assert.throws(()=>calcularSaldos({contas,lancamentos:[{tipo:'despesa',conta_id:'outra',valor_centavos:1}]}),/unknown_account/);
+assert.throws(()=>calcularSaldos({contas:[...contas,contas[0]]}),/invalid_account/);
+console.log('Account balance and transfer calculations passed');
