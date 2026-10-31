@@ -7,9 +7,11 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  async function evaluate(expression){return new Promise((resolve,reject)=>{const ws=new WebSocket(tab.webSocketDebuggerUrl),timer=setTimeout(()=>{ws.close();reject(Error('Native export timeout'));},20000);ws.onopen=()=>ws.send(JSON.stringify({id:1,method:'Runtime.evaluate',params:{expression,returnByValue:true,awaitPromise:true}}));ws.onmessage=e=>{const d=JSON.parse(e.data);if(d.id!==1)return;clearTimeout(timer);ws.close();if(d.error||d.result?.exceptionDetails)reject(Error(JSON.stringify(d)));else resolve(d.result.result.value);};ws.onerror=reject;});}
  await evaluate(`window.elmExportResult=null;window.Capacitor.nativePromise('ELMExport','saveCsv',{name:'elm-native-test.csv',text:'\\uFEFFData;Descrição;Valor\\r\\n31/10/2026;Óleo;2,50'}).then(r=>window.elmExportResult=r);'picker requested'`);
  let found=false;
- for(let i=0;i<15;i++){
+ for(let i=0;i<30;i++){
   await pause(500);adb('shell','uiautomator','dump','/sdcard/elm-picker.xml');const xml=adb('shell','cat','/sdcard/elm-picker.xml');
-  const node=(xml.match(/<node\b[^>]*>/g)||[]).find(n=>/text="SAVE"/i.test(n)&&/enabled="true"/.test(n));
+  const nodes=xml.match(/<node\b[^>]*>/g)||[];
+  if(xml.includes('Quickstep')&&/responding/.test(xml)){const close=nodes.find(n=>/text="Close app"/i.test(n));if(close){const b=close.match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);adb('shell','input','tap',String(Math.floor((+b[1]+ +b[3])/2)),String(Math.floor((+b[2]+ +b[4])/2)));console.log('Dismissed Quickstep launcher ANR; app export remains open.');continue;}}
+  const node=nodes.find(n=>/text="SAVE"/i.test(n)&&/enabled="true"/.test(n));
   if(node){const b=node.match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);adb('shell','input','tap',String(Math.floor((+b[1]+ +b[3])/2)),String(Math.floor((+b[2]+ +b[4])/2)));found=true;break;}
  }
  if(!found)throw Error('Native document Save button unavailable');
