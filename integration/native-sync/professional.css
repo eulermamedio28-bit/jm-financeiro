@@ -1,3 +1,7 @@
+@font-face{font-family:Inter;src:url("fonts/inter-latin-400-normal.woff2") format("woff2");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:Inter;src:url("fonts/inter-latin-500-normal.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:Inter;src:url("fonts/inter-latin-600-normal.woff2") format("woff2");font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:Inter;src:url("fonts/inter-latin-700-normal.woff2") format("woff2");font-style:normal;font-weight:700;font-display:swap}
 :root{--jm-gold:#ddbf83;--jm-wine:#852c45;--jm-surface:#261a20;--jm-border:#49343d}
 body{background:#180f14}nav.side{display:none!important}.app{display:block}main{max-width:900px;margin:auto;padding:20px 18px 130px;color:#f5ece7}
 #cloud-app{font-family:Inter,system-ui,sans-serif}#cloud-app h1{font-size:25px;color:var(--jm-gold)}#cloud-app h2{font-family:inherit;font-size:17px;color:#f5ece7;line-height:1.35}#cloud-app p{line-height:1.5}#cloud-app .sub{font-size:12px;color:#bdadb4}#cloud-app .panel{background:var(--jm-surface);border:1px solid var(--jm-border);border-radius:17px;padding:17px;margin:16px 0;box-shadow:none}#cloud-app .btn{min-height:44px;border-radius:11px;padding:10px 16px;font-family:inherit;font-size:13px;cursor:pointer;background:var(--jm-wine);color:#fff;border:1px solid #b7787c}#cloud-app .btn.ghost{background:transparent;color:var(--jm-gold);border:1px solid #6d5149}#cloud-app button:focus-visible{outline:2px solid var(--jm-gold);outline-offset:3px}#cloud-app .jm-header{display:flex;align-items:center;margin-bottom:8px}#cloud-app .jm-header>div{display:grid;grid-template-columns:44px 1fr;column-gap:11px;align-items:center}#cloud-app .jm-header img{grid-row:1/3;width:44px!important;height:44px!important;margin:0!important}#cloud-app .jm-header h1{grid-column:2;margin:0}#cloud-app .jm-header .sub{grid-column:2;margin:2px 0 0;font-size:11px}#status{font-size:11px;color:#b6a6ae;margin:10px 0;min-height:17px;overflow-wrap:anywhere}
@@ -20,3 +24,72 @@ html[data-theme=light] #cloud-app h1,html[data-theme=light] #cloud-app .panel h2
 /* Keep saving and validation feedback visible above modal fields. */
 #cloud-app #jm-editor-status{position:sticky;top:0;z-index:2;padding:12px;border:1px solid var(--jm-border);border-radius:10px;background:var(--card);color:var(--tx);font-size:14px}
 #cloud-app dialog{max-height:calc(100dvh - 48px);scroll-padding:20px}
+
+/* v125: legibilidade, tela inicial enxuta e lançamento rápido */
+#cloud-app .jm-header .sub{display:none}
+#cloud-app .jm-environment[hidden],#cloud-app #jm-reconcile-alert[hidden]{display:none}
+#cloud-app .sub,#status{font-size:13px}
+#cloud-app .cloud-row p{font-size:13px}
+#cloud-app .cloud-row strong{font-size:15.5px;font-weight:600}
+#cloud-app .kpi strong{font-size:13px;font-weight:600}
+#cloud-app label{font-size:14px}
+#cloud-app .btn{font-size:14px}
+#cloud-app #jm-period-label{font-size:14px}
+#cloud-app #jm-filter{padding:8px 11px;min-width:44px}
+#cloud-app #jm-bottom-nav button{font-size:12px}
+#cloud-app .jm-section-heading button{font-size:12px}
+#cloud-app .jm-chips>span{font-size:13px}
+#reconciliation{font-size:13px}
+#cloud-app .sub{color:#e3d8dd}#status{color:#d8cbd2}#cloud-app .kpi strong{color:#e8dce2}
+html[data-theme=light] #cloud-app .sub,html[data-theme=light] #status{color:#51454d}
+html[data-theme=light] #cloud-app .kpi strong{color:#51454d}
+#cloud-app .kpi.kpi-main{grid-column:1/-1;min-height:0;padding:18px}
+#cloud-app .kpi.kpi-main .cloud-row .sub{font-size:clamp(28px,9vw,36px);white-space:nowrap}
+#cloud-app .kpi-split{display:flex;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--jm-border)}
+#cloud-app .kpi-split>div{flex:1;min-width:0;display:grid;gap:3px}
+#cloud-app .kpi-split span{font-size:13px}
+#cloud-app .kpi .kpi-split strong{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+#cloud-app .kpi-split [data-kind=receita] strong{color:#91d7b4}
+#cloud-app .kpi-split [data-kind=despesa] strong{color:#ffb1b3}
+html[data-theme=light] #cloud-app .kpi-split [data-kind=receita] strong{color:#167044}
+html[data-theme=light] #cloud-app .kpi-split [data-kind=despesa] strong{color:#ac2637}
+#cloud-app .jm-balance-line,#cloud-app #jm-reconcile-alert{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:48px;margin:10px 0;padding:12px 16px;border-radius:14px;font:inherit;font-size:15px;font-weight:600;cursor:pointer;border:1px solid var(--jm-border);background:var(--jm-surface);color:inherit;text-align:left}
+#cloud-app #jm-reconcile-alert{font-size:13px;background:#33271d;color:#e4c386;border-color:#6a5530}
+html[data-theme=light] #cloud-app #jm-reconcile-alert{background:#fff6e7;color:#79581d;border-color:#ecd9a8}
+#cloud-app [data-editable]{cursor:pointer}
+#cloud-app #entry input[name=valor]{font-size:28px;font-weight:700;min-height:58px}
+#cloud-app #jm-entry-chips{display:flex;flex-wrap:wrap;gap:8px}
+#cloud-app #jm-entry-chips button{font:inherit;font-size:13px;padding:8px 12px;min-height:38px;border-radius:19px;cursor:pointer;background:transparent;color:var(--jm-gold);border:1px solid #6d5149}
+#cloud-app #jm-entry-chips button[aria-pressed=true]{background:var(--jm-wine);color:#fff;border-color:var(--jm-wine)}
+html[data-theme=light] #cloud-app #jm-entry-chips button{color:#713049;border-color:#cebac3;background:#fff}
+html[data-theme=light] #cloud-app #jm-entry-chips button[aria-pressed=true]{background:#79243e;color:#fff;border-color:#79243e}
+#cloud-app details.panel>.btn.ghost,#cloud-app details.panel details>.btn.ghost{display:block;width:100%;margin:10px 0}
+#cloud-app .jm-balance-line{gap:12px}#cloud-app .jm-balance-line span:last-child{white-space:nowrap}
+
+/* Version 125: hierarchy, contrast and responsive long amounts. */
+html[data-theme=light] main{color:#2b1a21}
+#cloud-app h1,#cloud-app h2{font-family:Inter,system-ui,sans-serif}
+#cloud-app .jm-header img{width:32px!important;height:32px!important;grid-row:auto}
+#cloud-app .jm-header>div{grid-template-columns:32px 1fr;gap:9px}
+#cloud-app .jm-header h1{font-size:22px}
+#cloud-app .cloud-row strong{font-weight:500;font-size:16px}
+#cloud-app .kpi strong{font-weight:600;font-size:13px}
+#cloud-app .kpi.kpi-main .cloud-row .sub{font-size:24px;font-weight:700}
+#cloud-app .kpi.kpi-main[data-wide=true] .cloud-row .sub{font-size:clamp(16px,4.8vw,24px)}
+#cloud-app .kpi .kpi-split strong{font-size:22px;font-weight:700;white-space:normal;overflow-wrap:anywhere}
+#cloud-app .kpi-split [data-kind=receita] strong,#cloud-app .kpi[data-kind=resultado][data-negative=false] .sub{color:#6fcf97}
+#cloud-app .kpi-split [data-kind=despesa] strong,#cloud-app .kpi[data-kind=resultado][data-negative=true] .sub{color:#ff8a8a}
+html[data-theme=light] #cloud-app .kpi-split [data-kind=receita] strong,html[data-theme=light] #cloud-app .kpi[data-kind=resultado][data-negative=false] .sub{color:#167044}
+html[data-theme=light] #cloud-app .kpi-split [data-kind=despesa] strong,html[data-theme=light] #cloud-app .kpi[data-kind=resultado][data-negative=true] .sub{color:#ac2637}
+#cloud-app .jm-unallocated-filter{display:flex;align-items:center;gap:8px;grid-column:1/-1}
+#cloud-app .jm-unallocated-filter input{width:20px;min-height:20px}
+#cloud-app .jm-balance-line{flex-wrap:wrap}
+#cloud-app .jm-balance-line span:last-child{white-space:normal;overflow-wrap:anywhere}
+#cloud-app #jm-entry-detail [data-correction-id]{display:block}
+#cloud-app #jm-bottom-nav button{color:#d5c6ce}
+html[data-theme=light] #cloud-app #jm-bottom-nav button{color:#62515c}
+#cloud-app .btn:disabled{opacity:.65;cursor:wait}
+#cloud-app #jm-actions .jm-action-options{grid-template-columns:1fr 1fr}
+#cloud-app #jm-actions .jm-action-options button{min-height:64px;text-align:center}
+#cloud-app #jm-entry-chips button{min-height:44px}
+#cloud-app #jm-recent [role=button]:focus-visible{outline:2px solid var(--jm-gold);outline-offset:3px}

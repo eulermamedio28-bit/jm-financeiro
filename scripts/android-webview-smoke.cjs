@@ -9,7 +9,7 @@
   ws.onmessage=e=>{const d=JSON.parse(e.data);if(d.id!==1)return;clearTimeout(timer);ws.close();if(d.error||d.result?.exceptionDetails)return reject(Error('WebView JavaScript error'));try{resolve(JSON.parse(d.result.result.value));}catch(err){reject(err);}};
   ws.onerror=()=>{clearTimeout(timer);reject(Error('WebView debug connection failed'));};
  });
- if(!result.login||!result.cloud||!result.logo||result.brand!=='ELM Gestão'||result.password!=='password'||result.legacy||!result.text?.includes('Entre para consultar'))throw Error('Installed Android UI failed validation: '+JSON.stringify(result));
+ if(!result.login||!result.cloud||!result.logo||result.brand!=='ELM Gestão'||result.password!=='password'||result.legacy||!result.text?.includes('Entre com seu e-mail'))throw Error('Installed Android UI failed validation: '+JSON.stringify(result));
  // Exercise the production theme handler and read the actual native window flags.
  const bars=await new Promise((resolve,reject)=>{
   const ws=new WebSocket(tab.webSocketDebuggerUrl),timer=setTimeout(()=>{ws.close();reject(Error('Native appearance timeout'));},20000);

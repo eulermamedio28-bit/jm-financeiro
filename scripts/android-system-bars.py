@@ -5,5 +5,5 @@ from shutil import copyfile
 target = Path('android/app/src/main/java/br/com/restaurantejm/financeiro')
 if not target.is_dir():
     raise SystemExit('Expected generated Android package is missing')
-for name in ('MainActivity.java', 'ELMSystemBarsPlugin.java'):
+for name in ('MainActivity.java', 'ELMSystemBarsPlugin.java', 'ELMExportPlugin.java'):
     copyfile(Path('integration/android-native') / name, target / name)

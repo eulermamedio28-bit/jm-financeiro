@@ -12,6 +12,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ELMSystemBarsPlugin.class);
+        registerPlugin(ELMExportPlugin.class);
         super.onCreate(savedInstanceState);
         // Android 15 enforces edge-to-edge: reserve native system and keyboard space.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
