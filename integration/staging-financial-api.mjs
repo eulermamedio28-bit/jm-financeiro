@@ -1,6 +1,7 @@
 // JM Financeiro: API authenticated by Supabase JWT, fail-closed by default.
 // This is a staging service. Never expose financial routes without explicit configuration.
 import http from 'node:http';
+import {prepareReconciliation,reconcileEntry} from './ledger-reconciliation.mjs';
 import {cadastroCartoes} from './credit-card-registry.mjs';
 import {prepareArchive,saveArchive} from './local-archive.mjs';
 import {loadDashboard} from './financial-dashboard.mjs';
@@ -46,6 +47,7 @@ async function initialize(){
  contasFinanceiras=criarContasFinanceiras(pool);
  await prepararCartoes(pool);cartoes=criarCartoes(pool);verifyToken=verifyAccessToken;
  await prepararPagamentosFatura(pool); pagamentos=criarPagamentosFatura(pool); // disabled unless explicitly enabled
+ await prepareReconciliation(pool);
  await prepararOAuth(pool);oauth=criarOAuth(pool,verifyAccessToken);
  ready=true;
  console.log('Staging financial API ready');
@@ -98,10 +100,10 @@ http.createServer(async(req,res)=>{
   const auth=req.headers.authorization;
   if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
-  try{return respond(200,{...await loadDashboard(pool,identity.accountId),dataEnvironment:process.env.JM_DATA_ENVIRONMENT==='real'?'real':'demo',invoicePaymentsEnabled:paymentsEnabled});}
+  try{return respond(200,{...await loadDashboard(pool,identity.accountId),dataEnvironment:process.env.JM_DATA_ENVIRONMENT==='real'?'real':'demo',invoicePaymentsEnabled:paymentsEnabled,reconciliationEnabled:true});}
   catch{return respond(503,{error:'dashboard_unavailable'});}
  }
- if(!['GET','POST'].includes(req.method)||!['/v1/cartoes','/v1/arquivo-local','/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/saldos','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
+ if(!['GET','POST'].includes(req.method)||!['/v1/lancamentos/conciliar','/v1/cartoes','/v1/arquivo-local','/v1/sync','/v1/sync/status','/v1/lancamentos','/v1/resumo','/v1/contas','/v1/saldos','/v1/transferencias','/v1/compras-cartao','/v1/faturas-cartao','/v1/pagamentos-fatura','/mcp'].includes(req.url))return respond(404,{error:'not_found'});
  let body;
  if(req.method==='POST'){
   try{
@@ -201,6 +203,14 @@ http.createServer(async(req,res)=>{
     try{const result=await cartoes.registrar(identity.accountId,body);return respond(result.created?201:200,result);}
     catch(e){return respond(['idempotency_conflict','invoice_already_settled'].includes(e.message)?409:400,{error:['idempotency_conflict','invoice_already_settled'].includes(e.message)?e.message:'invalid_credit_purchase'});}
    }
+  }
+  if(req.url==='/v1/lancamentos/conciliar'){
+   if(req.method!=='POST')return respond(405,{error:'method_not_allowed'});
+   const auth=req.headers.authorization;
+   if(typeof auth!=='string'||!auth.startsWith('Bearer '))return respond(401,{error:'unauthorized'});
+   let identity;try{identity=await verifyToken(auth.slice(7));}catch{return respond(401,{error:'unauthorized'});}
+   try{const result=await reconcileEntry(pool,identity.accountId,body);return respond(result.created?201:200,result);}
+   catch(e){const known=['invalid_correction','invalid_account_reference','entry_not_found','stale_entry','idempotency_conflict','invoice_correction_not_supported'];return respond(['stale_entry','idempotency_conflict'].includes(e.message)?409:e.message==='entry_not_found'?404:known.includes(e.message)?400:503,{error:known.includes(e.message)?e.message:'correction_unavailable'});}
   }
   if(req.url==='/v1/lancamentos'){
    const auth=req.headers.authorization;
