@@ -5,7 +5,7 @@
  if(!tab)throw Error('Android WebView debugging target missing');
  const result=await new Promise((resolve,reject)=>{
   const ws=new WebSocket(tab.webSocketDebuggerUrl),timer=setTimeout(()=>{ws.close();reject(Error('WebView DOM timeout'));},20000);
-  ws.onopen=()=>ws.send(JSON.stringify({id:1,method:'Runtime.evaluate',params:{expression:`JSON.stringify({login:!!document.querySelector('#login'),cloud:!!document.querySelector('#cloud-app'),logo:!!document.querySelector('#cloud-app header img'),brand:document.querySelector('#cloud-app h1')?.textContent,password:document.querySelector('#login [name=password]')?.type,legacy:!!document.querySelector('#premiumSummary'),text:document.querySelector('#status')?.textContent})`,returnByValue:true}}));
+  ws.onopen=()=>ws.send(JSON.stringify({id:1,method:'Runtime.evaluate',params:{expression:`(()=>{document.querySelector('#elm-welcome-skip')?.click();return JSON.stringify({login:!!document.querySelector('#login'),cloud:!!document.querySelector('#cloud-app'),logo:!!document.querySelector('#cloud-app header img'),brand:document.querySelector('#cloud-app h1')?.textContent,password:document.querySelector('#login [name=password]')?.type,legacy:!!document.querySelector('#premiumSummary'),text:document.querySelector('#status')?.textContent})})()`,returnByValue:true}}));
   ws.onmessage=e=>{const d=JSON.parse(e.data);if(d.id!==1)return;clearTimeout(timer);ws.close();if(d.error||d.result?.exceptionDetails)return reject(Error('WebView JavaScript error'));try{resolve(JSON.parse(d.result.result.value));}catch(err){reject(err);}};
   ws.onerror=()=>{clearTimeout(timer);reject(Error('WebView debug connection failed'));};
  });

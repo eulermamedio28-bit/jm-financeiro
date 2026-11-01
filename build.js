@@ -26,7 +26,7 @@ for (const file of fs.readdirSync("icons")) {
 // Retain the historical shell and restaurant logo while applying ELM product branding. Legacy financial data
 // is never loaded into the live cloud dashboard or silently overwritten.
 let page=fs.readFileSync('index.html','utf8');
-page=page.replace(/<title>[^<]*<\/title>/,'<title>ELM Gestão</title>').replace('content="Gestão financeira do Restaurante JM"','content="Controle financeiro para restaurantes e lanchonetes"');
+page=page.replace(/<title>[^<]*<\/title>/,'<title>ELM Gestão</title>').replace('content="Gestão financeira do Restaurante JM"','content="Gestão financeira para negócios de alimentação"');
 page=page.replace(/<link[^>]*href="https:\/\/fonts\.[^>]*>/g,'');
 fs.cpSync('fonts','www/fonts',{recursive:true});
 fs.copyFileSync('brand/elm-mark.svg','www/icons/elm-mark.svg');
@@ -38,7 +38,7 @@ page=page.replace('</head>',`<style>
 @media(max-width:860px){nav.side{display:none!important}.app{display:block}}
 </style></head>`);
 page=page.replace('</head>','<link rel="stylesheet" href="professional.css"></head>');
-for(const file of ['professional-ui.js','professional.css','theme.js','csv-export.js','pdf-export.js','payables-ui.js','closing-ui.js'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
+for(const file of ['professional-ui.js','professional.css','theme.js','csv-export.js','pdf-export.js','payables-ui.js','closing-ui.js','onboarding.js'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
 page=page.replace('</body>','<script type="module" src="cloud-app.js"></script></body>');
 fs.writeFileSync('www/index.html',page);
 fs.writeFileSync('www/cloud-app.js',fs.readFileSync('integration/native-sync/cloud-app.js','utf8').replace("'__ELM_BUILD__'",JSON.stringify(String(JSON.parse(fs.readFileSync('android-version.json','utf8')).versionCode))));
@@ -51,3 +51,5 @@ fs.copyFileSync('node_modules/jspdf/LICENSE','www/vendor/jspdf-LICENSE');
 fs.copyFileSync('integration/cash-closing-model.mjs','www/cash-closing-model.js');
 
 fs.writeFileSync('www/month-comparison.js',fs.readFileSync('integration/month-comparison.mjs','utf8').replace("'./financial-dashboard.mjs'","'./financial-dashboard.js'"));
+
+fs.cpSync('brand/onboarding','www/onboarding',{recursive:true});
