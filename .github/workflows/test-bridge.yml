@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install dependencies
+        run: npm ci
       - name: Validar sintaxe dos módulos
         run: |
           node --check integration/snapshot-readonly.mjs
