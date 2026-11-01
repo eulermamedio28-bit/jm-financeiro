@@ -1,6 +1,6 @@
 // Cache only public application files; never cache authenticated API responses.
-const CACHE='elm-gestao-pwa-v130';
-const ASSETS=['./','./index.html','./manifest.webmanifest','./cloud-app.js','./professional-ui.js','./csv-export.js','./pdf-export.js','./payables-ui.js','./closing-ui.js','./cash-closing-model.js','./vendor/jspdf.umd.min.js','./fonts/inter-pdf-400.ttf','./fonts/inter-pdf-700.ttf','./theme.js','./financial-dashboard.js','./professional.css','./icons/elm-mark.svg','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-192.png','./icons/icon-maskable-512.png',...['400','500','600','700'].map(w=>'./fonts/inter-latin-'+w+'-normal.woff2')];
+const CACHE='elm-gestao-pwa-v131';
+const ASSETS=['./','./index.html','./manifest.webmanifest','./cloud-app.js','./professional-ui.js','./csv-export.js','./pdf-export.js','./payables-ui.js','./closing-ui.js','./cash-closing-model.js','./month-comparison.js','./vendor/jspdf.umd.min.js','./fonts/inter-pdf-400.ttf','./fonts/inter-pdf-700.ttf','./theme.js','./financial-dashboard.js','./professional.css','./icons/elm-mark.svg','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-192.png','./icons/icon-maskable-512.png',...['400','500','600','700'].map(w=>'./fonts/inter-latin-'+w+'-normal.woff2')];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>(k.startsWith('jm-financeiro-pwa-')||k.startsWith('elm-gestao-pwa-'))&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{

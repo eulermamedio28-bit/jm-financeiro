@@ -49,3 +49,5 @@ fs.copyFileSync('node_modules/jspdf/dist/jspdf.umd.min.js','www/vendor/jspdf.umd
 fs.copyFileSync('node_modules/jspdf/LICENSE','www/vendor/jspdf-LICENSE');
 
 fs.copyFileSync('integration/cash-closing-model.mjs','www/cash-closing-model.js');
+
+fs.writeFileSync('www/month-comparison.js',fs.readFileSync('integration/month-comparison.mjs','utf8').replace("'./financial-dashboard.mjs'","'./financial-dashboard.js'"));
