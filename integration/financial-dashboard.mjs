@@ -19,7 +19,7 @@ export function dashboard({contas=[],lancamentos=[],transferencias=[],compras=[]
  const invoices=new Map();for(const p of compras){const key=JSON.stringify([p.cartao,dateOnly(p.vencimento)]),v=cents(p.valor_centavos);if(!invoices.has(key))invoices.set(key,{cartao:p.cartao,vencimento:dateOnly(p.vencimento),total:0,pendente:0});const f=invoices.get(key);f.total=add(f.total,v);if(!p.paga_em)f.pendente=add(f.pendente,v);}
  return {from,to,receitas,despesas,resultado:add(receitas,-despesas),contas:balances,saldo,conciliado:unallocatedCount===0,naoAlocado:unallocated,quantidadeNaoAlocados:unallocatedCount,lancamentos:lancamentos.filter(l=>inside(l.data)),transferencias:transferencias.filter(t=>inside(t.data)),faturas:[...invoices.values()].sort((a,b)=>a.vencimento.localeCompare(b.vencimento)),compras};
 }
-export async function loadDashboard(pool,accountId){
+export async function loadDashboard(pool,accountId,{payables=false}={}){
  const client=await pool.connect();
  try{
   await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -27,6 +27,7 @@ export async function loadDashboard(pool,accountId){
   for(const [key,table]of Object.entries({contas:'jm_contas_financeiras',lancamentos:'jm_lancamentos',transferencias:'jm_transferencias',compras:'jm_compras_cartao',cartoes:'jm_cartoes_financeiros'})){
    const {rows}=await client.query(`SELECT * FROM ${table} WHERE account_id=$1::uuid${key==='lancamentos'?' AND excluido_em IS NULL':''}`,[accountId]);data[key]=rows;
   }
+  if(payables)data.contasPagar=(await client.query('SELECT * FROM jm_contas_pagar WHERE account_id=$1::uuid ORDER BY vencimento,id',[accountId])).rows;
   await client.query('COMMIT');return data;
  }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
 }

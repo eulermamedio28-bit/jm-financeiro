@@ -23,7 +23,7 @@ export async function reconcileEntry(pool,accountId,input){
   const prior=await client.query('SELECT * FROM jm_lancamentos_correcoes WHERE account_id=$1::uuid AND client_request_id=$2::uuid',[accountId,v.client_request_id]);
   if(prior.rows.length){const p=prior.rows[0];if(p.lancamento_id!==v.lancamento_id||p.posterior.conta_id!==v.conta_id||p.posterior.categoria!==v.categoria||JSON.stringify([p.anterior.conta_id,p.anterior.conta,p.anterior.categoria])!==JSON.stringify([v.expected.conta_id,v.expected.conta,v.expected.categoria]))throw Error('idempotency_conflict');await client.query('COMMIT');return {created:false,correcao:p};}
   const result=await client.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid AND id=$2::uuid FOR UPDATE',[accountId,v.lancamento_id]);
-  const entry=result.rows[0];if(entry?.excluido_em)throw Error('invalid_entry_state');if(!entry)throw Error('entry_not_found');
+  const entry=result.rows[0];if(entry?.conta_pagar_id)throw Error('payable_entry_protected');if(entry?.excluido_em)throw Error('invalid_entry_state');if(!entry)throw Error('entry_not_found');
   const before={conta_id:nullable(entry.conta_id),conta:nullable(entry.conta),categoria:nullable(entry.categoria)};
   if(JSON.stringify([before.conta_id,before.conta,before.categoria])!==JSON.stringify([v.expected.conta_id,v.expected.conta,v.expected.categoria]))throw Error('stale_entry');
   // Invoice account is also recorded in the payment ledger. Do not silently diverge them.

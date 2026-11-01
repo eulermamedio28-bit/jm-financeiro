@@ -38,7 +38,7 @@ page=page.replace('</head>',`<style>
 @media(max-width:860px){nav.side{display:none!important}.app{display:block}}
 </style></head>`);
 page=page.replace('</head>','<link rel="stylesheet" href="professional.css"></head>');
-for(const file of ['professional-ui.js','professional.css','theme.js','csv-export.js','pdf-export.js'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
+for(const file of ['professional-ui.js','professional.css','theme.js','csv-export.js','pdf-export.js','payables-ui.js'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
 page=page.replace('</body>','<script type="module" src="cloud-app.js"></script></body>');
 fs.writeFileSync('www/index.html',page);
 fs.writeFileSync('www/cloud-app.js',fs.readFileSync('integration/native-sync/cloud-app.js','utf8').replace("'__ELM_BUILD__'",JSON.stringify(String(JSON.parse(fs.readFileSync('android-version.json','utf8')).versionCode))));

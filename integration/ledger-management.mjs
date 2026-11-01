@@ -31,6 +31,7 @@ export async function changeEntry(pool,actor,input){
   if(entry.versao!==request.expected_version)throw Error('stale_entry');
   const payment=await client.query('SELECT id FROM jm_pagamentos_fatura WHERE account_id=$1::uuid AND lancamento_id=$2::uuid',[actor,entry.id]);
   // Legacy invoice entries are also protected even when the historical link is absent.
+  if(entry.conta_pagar_id)throw Error('payable_entry_protected');
   if(payment.rows.length||/^Pagamento fatura /i.test(entry.descricao)||entry.categoria==='Pagamento de fatura de cartão')throw Error('linked_entry_protected');
   if(request.acao==='restaurar'?!entry.excluido_em:!!entry.excluido_em)throw Error('invalid_entry_state');
   const before=snapshot(entry);let result;
