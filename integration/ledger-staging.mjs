@@ -1,0 +1,53 @@
+// Authenticated, idempotent JM Financeiro ledger. Monetary values in integer BRL cents.
+import {randomUUID} from 'node:crypto';
+import {validDate} from './financial-dashboard.mjs';
+const TYPES=new Set(['receita','despesa']);
+export async function prepararLancamentos(pool){
+ await pool.query(`CREATE TABLE IF NOT EXISTS jm_lancamentos (
+ id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES jm_accounts(id),
+ client_request_id uuid NOT NULL, tipo text NOT NULL CHECK(tipo IN ('receita','despesa')),
+ valor_centavos bigint NOT NULL CHECK(valor_centavos>0),
+ descricao text NOT NULL, categoria text, conta text, data date NOT NULL,
+ criado_em timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(account_id,client_request_id))`);
+ await pool.query('ALTER TABLE jm_lancamentos ADD COLUMN IF NOT EXISTS conta_id uuid');
+ await pool.query('ALTER TABLE jm_lancamentos ADD COLUMN IF NOT EXISTS excluido_em timestamptz, ADD COLUMN IF NOT EXISTS excluido_por uuid, ADD COLUMN IF NOT EXISTS versao integer NOT NULL DEFAULT 0');
+ await pool.query('CREATE INDEX IF NOT EXISTS jm_lancamentos_account_data ON jm_lancamentos(account_id,data DESC,criado_em DESC)');
+}
+export function criarLancamentos(pool){
+ return {
+ async registrar(accountId,input){
+  if(!TYPES.has(input?.tipo)||!Number.isSafeInteger(input.valor_centavos)||input.valor_centavos<=0||input.valor_centavos>100000000000||typeof input.descricao!=='string'||!input.descricao.trim()||input.descricao.length>500||typeof input.client_request_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.client_request_id)||!validDate(input.data))throw Error('invalid_entry');
+  for(const k of ['categoria','conta'])if(input[k]!=null&&(typeof input[k]!=='string'||input[k].length>120))throw Error('invalid_entry');
+  if(input.conta_id!=null){
+   if(typeof input.conta_id!=='string'||!/^[0-9a-f-]{36}$/i.test(input.conta_id))throw Error('invalid_account_reference');
+   const linked=await pool.query('SELECT nome FROM jm_contas_financeiras WHERE account_id=$1::uuid AND id=$2::uuid',[accountId,input.conta_id]);
+   if(linked.rows.length!==1)throw Error('invalid_account_reference');
+   if(input.conta&&input.conta!==linked.rows[0].nome)throw Error('invalid_account_reference');
+   input={...input,conta:linked.rows[0].nome};
+  }
+  const args=[randomUUID(),accountId,input.client_request_id,input.tipo,input.valor_centavos,input.descricao.trim(),input.categoria||null,input.conta||null,input.data,input.conta_id||null];
+  await pool.query('INSERT INTO jm_accounts(id) VALUES($1::uuid) ON CONFLICT DO NOTHING',[accountId]);
+  const {rows}=await pool.query(`INSERT INTO jm_lancamentos(id,account_id,client_request_id,tipo,valor_centavos,descricao,categoria,conta,data,conta_id)
+ VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9::date,$10::uuid)
+ ON CONFLICT(account_id,client_request_id) DO NOTHING RETURNING *`,args);
+  if(rows.length)return {created:true,lancamento:rows[0]};
+  const existing=await pool.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid AND client_request_id=$2::uuid',[accountId,input.client_request_id]);
+  const item=existing.rows[0];if(!item)throw Error('idempotency_lookup_failed');
+  if(item.tipo!==input.tipo||BigInt(item.valor_centavos)!==BigInt(input.valor_centavos)||item.descricao!==input.descricao.trim()||(item.categoria||null)!==(input.categoria||null)||(item.conta||null)!==(input.conta||null)||(item.conta_id||null)!==(input.conta_id||null)||(item.data instanceof Date?item.data.toISOString().slice(0,10):String(item.data).slice(0,10))!==input.data)throw Error('idempotency_conflict');
+  return {created:false,lancamento:item};
+ },
+ async resumo(accountId){
+  const {rows}=await pool.query(`SELECT
+   COALESCE(SUM(valor_centavos) FILTER (WHERE tipo='receita'),0)::text AS receitas_centavos,
+   COALESCE(SUM(valor_centavos) FILTER (WHERE tipo='despesa'),0)::text AS despesas_centavos,
+   COUNT(*)::integer AS quantidade
+   FROM jm_lancamentos WHERE account_id=$1::uuid AND excluido_em IS NULL`,[accountId]);
+  const x=rows[0];return {receitas_centavos:x.receitas_centavos,despesas_centavos:x.despesas_centavos,resultado_centavos:(BigInt(x.receitas_centavos)-BigInt(x.despesas_centavos)).toString(),quantidade:x.quantidade};
+ },
+ async listar(accountId,limit=50){
+  const {rows}=await pool.query('SELECT * FROM jm_lancamentos WHERE account_id=$1::uuid AND excluido_em IS NULL ORDER BY data DESC,criado_em DESC LIMIT $2',[accountId,Math.min(Math.max(limit,1),100)]);
+  return rows;
+ }
+ };
+}

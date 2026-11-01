@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>JM Financeiro — Desenvolvimento</title>
+<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#210b12;color:#f8ebd6;font:16px system-ui,sans-serif}#access{min-height:100dvh;display:grid;place-items:center;padding:18px}section{width:min(100%,430px);background:#35121c;border:1px solid #b7924c;border-radius:16px;padding:24px}h1{color:#e5c47a}label{display:block;margin:16px 0}input,button{display:block;width:100%;padding:13px;border-radius:8px;font:inherit}input{background:#210b12;color:#fff;border:1px solid #a78a63}button{background:#d5b36c;color:#210b12;border:0;font-weight:700}button:disabled{opacity:.5}#panel{width:100%;height:100dvh;border:0}#exit{position:fixed;right:12px;top:12px;z-index:10;width:auto;padding:8px 14px}small{color:#d9c6ad}</style></head>
+<body><div id="access"><section><h1>JM Financeiro</h1><p>Login — versão de desenvolvimento</p><p id="status" role="status">Preparando autenticação…</p><form id="login" hidden><label>E-mail<input id="email" type="email" autocomplete="username" required></label><label>Senha<input id="password" type="password" autocomplete="current-password" required></label><button id="submit" type="submit">Entrar</button></form><small>Ambiente de teste. Não usar para dados reais.</small></section></div><button id="exit" hidden>Sair</button><div id="mount"></div>
+<script type="module">
+import {criarAutenticacaoJM} from './supabase-auth-client.mjs';
+import {criarPortaoDeAcesso} from './login-gate.mjs';
+const status=document.getElementById('status'),form=document.getElementById('login'),access=document.getElementById('access'),mount=document.getElementById('mount'),exit=document.getElementById('exit');
+const show=x=>status.textContent=x;
+try {
+ const response=await fetch('./config.json',{cache:'no-store'});if(!response.ok)throw Error('Configuração ausente');
+ const cfg=await response.json();const auth=criarAutenticacaoJM({supabaseUrl:cfg.supabaseUrl,publishableKey:cfg.publishableKey});
+ const gate=criarPortaoDeAcesso({
+  autenticar:(email,password)=>auth.entrar(email,password),
+  inicializarPainel:async()=>{
+   // The frame is created only after login, not at page load.
+   // DEV ONLY: the underlying panel.html URL is not access-controlled.
+   const frame=document.createElement('iframe');frame.id='panel';frame.title='Painel financeiro de teste';frame.src='./panel.html';mount.append(frame);access.hidden=true;exit.hidden=false;
+  },
+  encerrarPainel:async()=>{mount.replaceChildren();exit.hidden=true;access.hidden=false;}
+ });
+ form.hidden=false;show('Entre com sua conta Supabase.');
+ form.addEventListener('submit',async e=>{e.preventDefault();const btn=document.getElementById('submit');btn.disabled=true;show('Autenticando…');
+  try{await gate.entrar(document.getElementById('email').value,document.getElementById('password').value);document.getElementById('password').value='';}
+  catch{show('Acesso não autorizado. Confira as credenciais.');}
+  finally{btn.disabled=false;}
+ });
+ exit.addEventListener('click',async()=>{await gate.bloquear();try{await auth.sair()}catch{}show('Sessão encerrada.');});
+} catch{show('Ambiente de desenvolvimento não configurado.');}
+</script></body></html>
