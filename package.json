@@ -12,8 +12,9 @@
     "test:ui": "node scripts/cloud-ui.test.cjs"
   },
   "dependencies": {
+    "@capacitor/android": "^7.0.0",
     "@capacitor/core": "^7.0.0",
-    "@capacitor/android": "^7.0.0"
+    "jspdf": "4.2.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",

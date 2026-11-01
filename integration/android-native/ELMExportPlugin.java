@@ -2,6 +2,7 @@ package br.com.restaurantejm.financeiro;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.util.Base64;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -27,6 +28,48 @@ public class ELMExportPlugin extends Plugin {
         intent.setType("text/csv");
         intent.putExtra(Intent.EXTRA_TITLE, name);
         startActivityForResult(call, intent, "csvCreated");
+    }
+
+    @PluginMethod
+    public void savePdf(PluginCall call) {
+        String name = call.getString("name");
+        String encoded = call.getString("base64");
+        if (name == null || !name.matches("[a-zA-Z0-9-]+\\.pdf") || encoded == null || encoded.length() > 28000000) {
+            call.reject("Invalid export");
+            return;
+        }
+        try {
+            byte[] bytes = Base64.decode(encoded, Base64.DEFAULT);
+            if (bytes.length < 5 || bytes[0] != '%' || bytes[1] != 'P' || bytes[2] != 'D' || bytes[3] != 'F' || bytes[4] != '-') throw new IllegalArgumentException();
+        } catch (IllegalArgumentException error) {
+            call.reject("Invalid PDF");
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/pdf");
+        intent.putExtra(Intent.EXTRA_TITLE, name);
+        startActivityForResult(call, intent, "pdfCreated");
+    }
+
+    @ActivityCallback
+    private void pdfCreated(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null || result.getData().getData() == null) {
+            JSObject answer = new JSObject();
+            answer.put("cancelled", true);
+            call.resolve(answer);
+            return;
+        }
+        try (OutputStream output = getContext().getContentResolver().openOutputStream(result.getData().getData(), "wt")) {
+            if (output == null) throw new java.io.IOException("Unavailable destination");
+            output.write(Base64.decode(call.getString("base64", ""), Base64.DEFAULT));
+            JSObject answer = new JSObject();
+            answer.put("cancelled", false);
+            call.resolve(answer);
+        } catch (Exception error) {
+            call.reject("Could not save file");
+        }
     }
 
     @ActivityCallback
