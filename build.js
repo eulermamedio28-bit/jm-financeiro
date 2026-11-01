@@ -41,5 +41,5 @@ page=page.replace('</head>','<link rel="stylesheet" href="professional.css"></he
 for(const file of ['professional-ui.js','professional.css','theme.js','csv-export.js'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
 page=page.replace('</body>','<script type="module" src="cloud-app.js"></script></body>');
 fs.writeFileSync('www/index.html',page);
-fs.copyFileSync('integration/native-sync/cloud-app.js','www/cloud-app.js');
+fs.writeFileSync('www/cloud-app.js',fs.readFileSync('integration/native-sync/cloud-app.js','utf8').replace("'__ELM_BUILD__'",JSON.stringify(String(JSON.parse(fs.readFileSync('android-version.json','utf8')).versionCode))));
 fs.copyFileSync('integration/financial-dashboard.mjs','www/financial-dashboard.js');
