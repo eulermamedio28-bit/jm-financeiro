@@ -38,7 +38,7 @@ page=page.replace('</head>',`<style>
 @media(max-width:860px){nav.side{display:none!important}.app{display:block}}
 </style></head>`);
 page=page.replace('</head>','<link rel="stylesheet" href="professional.css"></head>');
-for(const file of ['professional-ui.js','professional.css','theme.js','csv-export.js','pdf-export.js','payables-ui.js'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
+for(const file of ['professional-ui.js','professional.css','theme.js','csv-export.js','pdf-export.js','payables-ui.js','closing-ui.js'])fs.copyFileSync(path.join('integration','native-sync',file),path.join('www',file));
 page=page.replace('</body>','<script type="module" src="cloud-app.js"></script></body>');
 fs.writeFileSync('www/index.html',page);
 fs.writeFileSync('www/cloud-app.js',fs.readFileSync('integration/native-sync/cloud-app.js','utf8').replace("'__ELM_BUILD__'",JSON.stringify(String(JSON.parse(fs.readFileSync('android-version.json','utf8')).versionCode))));
@@ -47,3 +47,5 @@ fs.copyFileSync('integration/financial-dashboard.mjs','www/financial-dashboard.j
 fs.mkdirSync('www/vendor',{recursive:true});
 fs.copyFileSync('node_modules/jspdf/dist/jspdf.umd.min.js','www/vendor/jspdf.umd.min.js');
 fs.copyFileSync('node_modules/jspdf/LICENSE','www/vendor/jspdf-LICENSE');
+
+fs.copyFileSync('integration/cash-closing-model.mjs','www/cash-closing-model.js');
