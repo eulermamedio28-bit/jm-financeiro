@@ -1,0 +1,23 @@
+// ELM 135: public onboarding only; no financial data or credentials.
+const slides=[
+{title:'Seu negócio, sob controle.',description:'Organize entradas, despesas e o caixa do dia em um só lugar.',image:'scene-1.webp',alt:'Gestor de um negócio de alimentação apresentando o controle financeiro.'},
+{title:'Saiba o que entra e o que sai.',description:'Acompanhe receitas, despesas e recebimentos por forma de pagamento.',image:'scene-2.webp',alt:'Gestor conferindo recebimentos no caixa.'},
+{title:'Planeje os próximos passos.',description:'Organize vencimentos e acompanhe os resultados do seu negócio.',image:'scene-3.webp',alt:'Gestor organizando vencimentos e planejamento.'}
+];
+export function installOnboarding(root){
+const key='elm_welcome_v1';let index=0,previousFocus=null;
+const screen=document.createElement('section');screen.id='elm-welcome';screen.hidden=true;screen.setAttribute('aria-label','Conheça o ELM Gestão');
+screen.innerHTML='<div class="elm-welcome-top"><div class="elm-welcome-brand"><img src="icons/elm-mark.svg" alt=""><strong>ELM Gestão</strong></div><button id="elm-welcome-skip" type="button">Pular</button></div><div class="elm-welcome-art"><img id="elm-welcome-image" alt=""></div><div class="elm-welcome-copy"><h2 id="elm-welcome-title" tabindex="-1"></h2><p id="elm-welcome-description"></p><nav id="elm-welcome-dots" aria-label="Telas da apresentação"></nav><p id="elm-welcome-position" class="elm-welcome-position" aria-live="polite"></p><div class="elm-welcome-actions"><button type="button" id="elm-welcome-back" class="btn ghost">Voltar</button><button type="button" id="elm-welcome-next" class="btn">Próximo</button></div><button type="button" id="elm-welcome-login">Já tenho conta · Entrar</button></div>';
+root.prepend(screen);const get=id=>screen.querySelector('#'+id);
+const dots=slides.map((slide,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-label','Tela '+(i+1)+': '+slide.title);b.onclick=()=>{index=i;render(true);};get('elm-welcome-dots').append(b);return b;});
+function render(focus){
+screen.classList.remove('elm-slide-enter');
+const slide=slides[index];get('elm-welcome-image').src='onboarding/'+slide.image;get('elm-welcome-image').alt=slide.alt;get('elm-welcome-title').textContent=slide.title;get('elm-welcome-description').textContent=slide.description;get('elm-welcome-position').textContent=(index+1)+' de '+slides.length;get('elm-welcome-back').hidden=index===0;get('elm-welcome-next').textContent=index===slides.length-1?'Começar':'Próximo';dots.forEach((b,i)=>{if(i===index)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){void screen.offsetWidth;screen.classList.add('elm-slide-enter');}
+if(focus)get('elm-welcome-title').focus({preventScroll:true});}
+function show(){previousFocus=document.activeElement;index=0;screen.hidden=false;root.classList.add('elm-onboarding-mode');document.body.classList.add('elm-welcome-visible');render(false);screen.classList.remove('elm-intro-play');void screen.offsetWidth;screen.classList.add('elm-intro-play');window.scrollTo({top:0,behavior:'instant'});get('elm-welcome-title').focus({preventScroll:true});}
+function finish(){try{localStorage.setItem(key,'seen');}catch{}screen.classList.remove('elm-intro-play','elm-slide-enter');screen.hidden=true;root.classList.remove('elm-onboarding-mode');document.body.classList.remove('elm-welcome-visible');window.scrollTo({top:0,behavior:'instant'});const login=document.getElementById('login');if(!login.hidden)login.elements.email.focus({preventScroll:true});else if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});}
+get('elm-welcome-next').onclick=()=>{if(index===slides.length-1)finish();else{index++;render(true);}};get('elm-welcome-back').onclick=()=>{index=Math.max(0,index-1);render(true);};get('elm-welcome-skip').onclick=finish;get('elm-welcome-login').onclick=finish;
+const revisit=document.createElement('button');revisit.type='button';revisit.id='elm-welcome-revisit';revisit.textContent='Rever apresentação ›';revisit.onclick=show;document.querySelector('.jm-management').append(revisit);
+let seen=false;try{seen=localStorage.getItem(key)==='seen';}catch{}if(!seen)show();
+return {show,close:finish};
+}
