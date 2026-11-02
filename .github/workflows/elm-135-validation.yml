@@ -1,0 +1,30 @@
+name: ELM 135 - validar fontes (sem distribuir APK)
+on:
+  push:
+    branches:
+      - dev/elm-135-recuperacao-segura
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Conferir arquivos reais e ligação do build
+        run: node recovery/verify-elm-135.mjs
+      - name: Conferir sintaxe JavaScript do onboarding
+        run: node --check integration/native-sync/onboarding.js
+      - name: Instalar dependências
+        run: npm ci
+      - name: Executar verificações de build e integração
+        run: npm run build:verify
+      - name: Validar arquivos de saída do onboarding
+        run: |
+          test -s www/onboarding.js
+          test -s www/professional.css
+          test -s www/index.html
+          node --check www/onboarding.js
+          cmp integration/native-sync/onboarding.js www/onboarding.js
+          cmp integration/native-sync/professional.css www/professional.css
